@@ -307,3 +307,92 @@ Linux poskytuje několik velmi užitečných nástrojů pro studium multicastu.
 | `ss` / `lsof` | zjištění procesů používajících multicast |
 
 Tyto nástroje umožňují jednoduše analyzovat **multicast chování přímo na Linux hostu**.
+
+## 📡 IGMP vs UDP Multicast
+
+Při práci s multicastem je důležité rozlišovat **IGMP** a **UDP multicast** – často se používají společně, ale mají odlišný účel.
+
+| Vlastnost | IGMP | UDP multicast |
+|-----------|------|---------------|
+| **Vrstva OSI** | L3 – síťová (IP) | L4 – transportní (UDP) |
+| **Účel** | Řízení členství v multicast skupinách | Přenos dat do více příjemců najednou |
+| **Co dělá** | Říká routerům/switchům, kdo chce dostávat konkrétní multicast group | Posílá samotný obsah (video, audio, data) do multicast IP |
+| **Adresy** | 224.0.0.0 – 239.255.255.255 (skupiny) | 224.0.0.0 – 239.255.255.255 (cílové adresy paketů) |
+| **Typický provoz** | `IGMP Join`, `IGMP Leave`, `Query` | UDP datagramy směrované do multicast IP |
+| **Viditelnost v tcpdump** | IGMP pakety (`tcpdump igmp`) | UDP pakety (`tcpdump udp and net 224.0.0.0/4`) |
+
+### Jednoduše
+
+- **IGMP** je jako *hlasování*: „Chci dostávat kanál 239.10.10.10!“  
+- **UDP multicast** je samotný *kanál*: video, audio, data, která se posílají všem, kdo hlasovali.
+
+Routery a switche **IGMP sledují**, aby věděly, kam má posílat multicast data.
+
+### Praktická analogie
+
+- **IGMP** → lidé v místnosti zvedají ruku, že chtějí sledovat určitý kanál televize.  
+- **UDP multicast** → televizní vysílání, které jde jen těm lidem, kteří zvedli ruku.
+
+### Tcpdump příklady
+
+#### IGMP – vidíš „hlasování“:
+
+```bash
+sudo tcpdump -ni eno1 igmp
+
+Výstup:
+
+IP 10.20.1.8 > 224.0.0.22: igmp v3 report, 1 group record(s)
+      group 239.255.255.250
+
+UDP multicast – vidíš samotný datový tok:
+sudo tcpdump -ni eno1 net 224.0.0.0/4
+
+Zobrazí SSDP, mDNS, IPTV streamy a další multicast datagramy.
+
+Nezobrazí IGMP Join/Leave, jen samotný obsah.
+
+Shrnutí
+
+IGMP = kontrolní protokol, zajišťuje, že zařízení „hlasují“ pro přijetí multicastu.
+
+UDP multicast = obsah, který se skutečně posílá všem, kdo se přihlásili přes IGMP.
+
+Použití tcpdump pro oba protokoly umožňuje monitorovat multicast od join/report po samotný datový stream.
+
+ASCII ilustrace – jak IGMP a UDP multicast spolu fungují
+
+                ┌───────────────┐
+                │   Router /    │
+                │  Multicast    │
+                │    Querier    │
+                └───────┬───────┘
+                        │ IGMP Query
+                        ▼
+          ┌─────────────────────────┐
+          │   Switch s IGMP Snooping │
+          └─────────┬───────────────┘
+                    │
+       ┌────────────┴─────────────┐
+       │                          │
+       ▼                          ▼
+┌─────────────┐            ┌─────────────┐
+│ Host A      │            │ Host B      │
+│ IGMP Join → │            │ IGMP Join → │
+│ 239.10.10.10│            │ 239.10.10.10│
+└─────┬───────┘            └─────┬───────┘
+      │                           │
+      │ UDP Multicast Stream      │
+      └──────────────┬────────────┘
+                     ▼
+             Multicast obsah
+     (video, audio, data…) všem hostům
+     kteří se přihlásili přes IGMP
+
+Shrnutí
+
+IGMP = kontrolní protokol, zajišťuje, že zařízení „hlasují“ pro přijetí multicastu.
+
+UDP multicast = obsah, který se skutečně posílá všem, kdo se přihlásili přes IGMP.
+
+Použití tcpdump pro oba protokoly umožňuje monitorovat multicast od join/report po samotný datový stream.
