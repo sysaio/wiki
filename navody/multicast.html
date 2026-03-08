@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Multicast na linuxu - IGMP</title></head>
+<body>
+<p>📡
+🐧
+IGMP experimenty na Linuxu jsou super způsob, jak to pochopit do hloubky. 
+Můžeme si nasimulovat multicast skupiny, join/leave, sledovat provoz ve tcpdumpu a případně i generovat vlastní provoz.</p>
+<h1>IGMP experimenty na Linuxu</h1>
+<p>Jednoduché experimenty pro pochopení chování protokolu <strong>IGMP (Internet Group Management Protocol)</strong> na Linuxu.</p>
+<p>Tyto experimenty demonstrují:</p>
+<ul>
+<li>multicast group membership</li>
+<li>IGMP reporty</li>
+<li>příjem multicast provozu</li>
+<li>stav multicastu v Linux kernelu</li>
+</ul>
+<hr />
+<h1>1. Zjištění aktuální multicast membership</h1>
+<p>Nejprve zjistíme, do jakých multicast skupin je systém aktuálně přihlášen.</p>
+<pre><code class="language-bash">ip maddr
+</code></pre>
+<p>Ukázka výstupu:</p>
+<pre><code>2: eno1
+    link 01:00:5e:00:00:01
+    link 01:00:5e:00:00:fb
+    link 01:00:5e:7f:ff:fa
+    inet 224.0.0.251 users 3
+    inet 239.255.255.250
+    inet 224.0.0.1
+</code></pre>
+<p>Multicast položky se zobrazují ve dvou vrstvách.</p>
+<h2>Multicast MAC adresy (Layer 2)</h2>
+<p>IPv4 multicast se mapuje na MAC adresy ve tvaru:</p>
+<pre><code>01:00:5e:xx:xx:xx
+</code></pre>
+<p>Příklady:</p>
+<table>
+<thead>
+<tr>
+<th>Multicast IP</th>
+<th>Multicast MAC</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>224.0.0.1</td>
+<td>01:00:5e:00:00:01</td>
+</tr>
+<tr>
+<td>224.0.0.251</td>
+<td>01:00:5e:00:00:fb</td>
+</tr>
+<tr>
+<td>239.255.255.250</td>
+<td>01:00:5e:7f:ff:fa</td>
+</tr>
+</tbody>
+</table>
+<h2>Multicast IP adresy (Layer 3)</h2>
+<p>Tyto adresy reprezentují multicast skupiny, do kterých je host přihlášen.</p>
+<hr />
+<h1>2. Běžné multicast skupiny</h1>
+<p>Některé multicast adresy se objevují téměř na každém Linux systému.</p>
+<h2>224.0.0.1</h2>
+<pre><code>All Hosts Multicast Group
+</code></pre>
+<p>Obsahuje všechny IPv4 hosty v lokální síti.</p>
+<hr />
+<h2>224.0.0.251</h2>
+<p>Používá <strong>mDNS (Multicast DNS)</strong>.</p>
+<p>Typicky služby:</p>
+<ul>
+<li>Avahi</li>
+<li>Apple Bonjour</li>
+<li>automatická detekce služeb v síti</li>
+</ul>
+<hr />
+<h2>239.255.255.250</h2>
+<p>Používá <strong>SSDP / UPnP</strong>.</p>
+<p>Typické použití:</p>
+<ul>
+<li>smart TV</li>
+<li>router discovery</li>
+<li>DLNA zařízení</li>
+<li>automatická konfigurace zařízení</li>
+</ul>
+<hr />
+<h1>3. Sledování IGMP provozu</h1>
+<p>IGMP pakety můžeme sledovat pomocí tcpdump.</p>
+<pre><code class="language-bash">sudo tcpdump -i eno1 igmp
+</code></pre>
+<p>Typické pakety:</p>
+<pre><code>IGMPv3 Membership Report
+IGMP Query
+</code></pre>
+<p>Běžný průběh komunikace:</p>
+<pre><code>Router -&gt; IGMP Query
+Host -&gt; IGMP Membership Report
+</code></pre>
+<hr />
+<h1>4. Manuální připojení do multicast skupiny</h1>
+<p>Host se může připojit do multicast skupiny pomocí nástroje <strong>socat</strong>.</p>
+<p>Instalace:</p>
+<pre><code class="language-bash">sudo apt install socat
+</code></pre>
+<p>Spuštění multicast listeneru:</p>
+<pre><code class="language-bash">socat UDP4-RECVFROM:5000,ip-add-membership=239.10.10.10:eno1,fork -
+</code></pre>
+<p>Po spuštění:</p>
+<ol>
+<li>Linux odešle <strong>IGMP Membership Report</strong></li>
+<li>Host se připojí do multicast skupiny:</li>
+</ol>
+<pre><code>239.10.10.10
+</code></pre>
+<hr />
+<h1>5. Ověření membership</h1>
+<p>Znovu zkontrolujeme multicast tabulku:</p>
+<pre><code class="language-bash">ip maddr show dev eno1
+</code></pre>
+<p>Měla by se objevit nová skupina:</p>
+<pre><code>inet 239.10.10.10
+</code></pre>
+<hr />
+<h1>6. Odeslání multicast provozu</h1>
+<p>V jiném terminálu můžeme odeslat multicast paket:</p>
+<pre><code class="language-bash">echo &quot;hello multicast&quot; | socat - UDP4-DATAGRAM:239.10.10.10:5000
+</code></pre>
+<p>Listener by měl zprávu přijmout.</p>
+<hr />
+<h1>7. IGMP Leave</h1>
+<p>Po ukončení listeneru:</p>
+<pre><code>CTRL+C
+</code></pre>
+<p>Linux kernel odešle:</p>
+<pre><code>IGMP Leave Group
+</code></pre>
+<p>Tento paket lze vidět v <code>tcpdump</code>.</p>
+<hr />
+<h1>8. Stav IGMP v Linux kernelu</h1>
+<p>Linux poskytuje interní informace o multicastu v souboru:</p>
+<pre><code class="language-bash">cat /proc/net/igmp
+</code></pre>
+<p>Ukázka výstupu:</p>
+<pre><code>Idx Device    : Count Querier   Group    Users Timer
+2   eno1      :     1     V3
+                010000E0     1 0:00000000
+</code></pre>
+<p>Význam polí:</p>
+<table>
+<thead>
+<tr>
+<th>Pole</th>
+<th>Význam</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Device</td>
+<td>síťové rozhraní</td>
+</tr>
+<tr>
+<td>Group</td>
+<td>multicast skupina</td>
+</tr>
+<tr>
+<td>Users</td>
+<td>počet procesů používajících skupinu</td>
+</tr>
+<tr>
+<td>Timer</td>
+<td>IGMP timer</td>
+</tr>
+</tbody>
+</table>
+<p>Tento soubor reprezentuje <strong>IGMP state machine uvnitř Linux kernelu</strong>.</p>
+<hr />
+<h1>9. Zjištění procesů používajících multicast</h1>
+<p>Pokud výstup obsahuje například:</p>
+<pre><code>inet 224.0.0.251 users 3
+</code></pre>
+<p>znamená to, že <strong>tři procesy mají otevřený socket v této multicast skupině</strong>.</p>
+<p>Procesy lze zjistit pomocí:</p>
+<pre><code class="language-bash">ss -ulpn
+</code></pre>
+<p>nebo</p>
+<pre><code class="language-bash">sudo lsof -i
+</code></pre>
+<hr />
+<h1>10. Testování IGMP verzí</h1>
+<p>Linux umožňuje vynutit verzi IGMP.</p>
+<p>Zjištění aktuální konfigurace:</p>
+<pre><code class="language-bash">cat /proc/sys/net/ipv4/conf/all/force_igmp_version
+</code></pre>
+<p>Možné hodnoty:</p>
+<table>
+<thead>
+<tr>
+<th>Hodnota</th>
+<th>IGMP verze</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>IGMPv1</td>
+</tr>
+<tr>
+<td>2</td>
+<td>IGMPv2</td>
+</tr>
+<tr>
+<td>3</td>
+<td>IGMPv3</td>
+</tr>
+</tbody>
+</table>
+<p>Příklad změny:</p>
+<pre><code class="language-bash">sudo sysctl net.ipv4.conf.all.force_igmp_version=2
+</code></pre>
+<hr />
+<h1>Další experimenty</h1>
+<p>Další zajímavé experimenty pro studium multicastu:</p>
+<ul>
+<li>simulace <strong>IGMP Querier</strong></li>
+<li>rozdíly mezi <strong>IGMPv2 a IGMPv3</strong></li>
+<li><strong>IGMP report suppression</strong></li>
+<li><strong>multicast flooding vs IGMP snooping</strong></li>
+<li><strong>source specific multicast (IGMPv3)</strong></li>
+</ul>
+<hr />
+<h1>Shrnutí</h1>
+<p>Linux poskytuje několik velmi užitečných nástrojů pro studium multicastu.</p>
+<table>
+<thead>
+<tr>
+<th>Nástroj</th>
+<th>Funkce</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ip maddr</code></td>
+<td>zobrazení multicast membership</td>
+</tr>
+<tr>
+<td><code>tcpdump</code></td>
+<td>analýza IGMP paketů</td>
+</tr>
+<tr>
+<td><code>socat</code></td>
+<td>generování multicast provozu</td>
+</tr>
+<tr>
+<td><code>/proc/net/igmp</code></td>
+<td>stav multicastu v kernelu</td>
+</tr>
+<tr>
+<td><code>ss</code> / <code>lsof</code></td>
+<td>zjištění procesů používajících multicast</td>
+</tr>
+</tbody>
+</table>
+<p>Tyto nástroje umožňují jednoduše analyzovat <strong>multicast chování přímo na Linux hostu</strong>.</p>
+<p><a href="../index.html">← Zpět na přehled</a></p>
+</body>
+</html>
