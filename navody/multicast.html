@@ -263,6 +263,107 @@ Host -&gt; IGMP Membership Report
 </tbody>
 </table>
 <p>Tyto nástroje umožňují jednoduše analyzovat <strong>multicast chování přímo na Linux hostu</strong>.</p>
+<h2>📡 IGMP vs UDP Multicast</h2>
+<p>Při práci s multicastem je důležité rozlišovat <strong>IGMP</strong> a <strong>UDP multicast</strong> – často se používají společně, ale mají odlišný účel.</p>
+<table>
+<thead>
+<tr>
+<th>Vlastnost</th>
+<th>IGMP</th>
+<th>UDP multicast</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Vrstva OSI</strong></td>
+<td>L3 – síťová (IP)</td>
+<td>L4 – transportní (UDP)</td>
+</tr>
+<tr>
+<td><strong>Účel</strong></td>
+<td>Řízení členství v multicast skupinách</td>
+<td>Přenos dat do více příjemců najednou</td>
+</tr>
+<tr>
+<td><strong>Co dělá</strong></td>
+<td>Říká routerům/switchům, kdo chce dostávat konkrétní multicast group</td>
+<td>Posílá samotný obsah (video, audio, data) do multicast IP</td>
+</tr>
+<tr>
+<td><strong>Adresy</strong></td>
+<td>224.0.0.0 – 239.255.255.255 (skupiny)</td>
+<td>224.0.0.0 – 239.255.255.255 (cílové adresy paketů)</td>
+</tr>
+<tr>
+<td><strong>Typický provoz</strong></td>
+<td><code>IGMP Join</code>, <code>IGMP Leave</code>, <code>Query</code></td>
+<td>UDP datagramy směrované do multicast IP</td>
+</tr>
+<tr>
+<td><strong>Viditelnost v tcpdump</strong></td>
+<td>IGMP pakety (<code>tcpdump igmp</code>)</td>
+<td>UDP pakety (<code>tcpdump udp and net 224.0.0.0/4</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3>Jednoduše</h3>
+<ul>
+<li><strong>IGMP</strong> je jako <em>hlasování</em>: „Chci dostávat kanál 239.10.10.10!“  </li>
+<li><strong>UDP multicast</strong> je samotný <em>kanál</em>: video, audio, data, která se posílají všem, kdo hlasovali.</li>
+</ul>
+<p>Routery a switche <strong>IGMP sledují</strong>, aby věděly, kam má posílat multicast data.</p>
+<h3>Praktická analogie</h3>
+<ul>
+<li><strong>IGMP</strong> → lidé v místnosti zvedají ruku, že chtějí sledovat určitý kanál televize.  </li>
+<li><strong>UDP multicast</strong> → televizní vysílání, které jde jen těm lidem, kteří zvedli ruku.</li>
+</ul>
+<h3>Tcpdump příklady</h3>
+<h4>IGMP – vidíš „hlasování“:</h4>
+<p>```bash
+sudo tcpdump -ni eno1 igmp</p>
+<p>Výstup:</p>
+<p>IP 10.20.1.8 &gt; 224.0.0.22: igmp v3 report, 1 group record(s)
+      group 239.255.255.250</p>
+<p>UDP multicast – vidíš samotný datový tok:
+sudo tcpdump -ni eno1 net 224.0.0.0/4</p>
+<p>Zobrazí SSDP, mDNS, IPTV streamy a další multicast datagramy.</p>
+<p>Nezobrazí IGMP Join/Leave, jen samotný obsah.</p>
+<p>Shrnutí</p>
+<p>IGMP = kontrolní protokol, zajišťuje, že zařízení „hlasují“ pro přijetí multicastu.</p>
+<p>UDP multicast = obsah, který se skutečně posílá všem, kdo se přihlásili přes IGMP.</p>
+<p>Použití tcpdump pro oba protokoly umožňuje monitorovat multicast od join/report po samotný datový stream.</p>
+<p>ASCII ilustrace – jak IGMP a UDP multicast spolu fungují</p>
+<pre><code>            ┌───────────────┐
+            │   Router /    │
+            │  Multicast    │
+            │    Querier    │
+            └───────┬───────┘
+                    │ IGMP Query
+                    ▼
+      ┌─────────────────────────┐
+      │   Switch s IGMP Snooping │
+      └─────────┬───────────────┘
+                │
+   ┌────────────┴─────────────┐
+   │                          │
+   ▼                          ▼
+</code></pre>
+<p>┌─────────────┐            ┌─────────────┐
+│ Host A      │            │ Host B      │
+│ IGMP Join → │            │ IGMP Join → │
+│ 239.10.10.10│            │ 239.10.10.10│
+└─────┬───────┘            └─────┬───────┘
+      │                           │
+      │ UDP Multicast Stream      │
+      └──────────────┬────────────┘
+                     ▼
+             Multicast obsah
+     (video, audio, data…) všem hostům
+     kteří se přihlásili přes IGMP</p>
+<p>Shrnutí</p>
+<p>IGMP = kontrolní protokol, zajišťuje, že zařízení „hlasují“ pro přijetí multicastu.</p>
+<p>UDP multicast = obsah, který se skutečně posílá všem, kdo se přihlásili přes IGMP.</p>
+<p>Použití tcpdump pro oba protokoly umožňuje monitorovat multicast od join/report po samotný datový stream.</p>
 <p><a href="../index.html">← Zpět na přehled</a></p>
 </body>
 </html>
