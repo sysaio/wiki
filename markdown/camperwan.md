@@ -5,7 +5,7 @@ tags: [camperwan, výprava, dovolena, stanování, přestavba]
 last_update: 2025-08-19
 ---
 
-# Chceme dodávku a možná ať v ní lze taky přespat. A kdyby to nebylo ono, tak tady je:
+# Teď máme Dodge Grand Caravan a stačí nám. Do budoucna chceme dodávku a možná ať v ní lze taky přespat. A kdyby to nebylo ono, tak tady je:
 # Přehled ojetých dodávek vhodných pro campervan
 
 | Model                         | Výška střechy  | Rozvor (mm)         | Motor (často)         | Výhody                                         | Poznámky                                |
