@@ -40,13 +40,6 @@ Cílem je mít přehled o údržbě všech vozidel – zaznamenat, kdy byl posle
 - **Poslední servis:** 3. 2. 2025 při 26 000 km  
 - **Provedené úkony:** kompletní servis včetně převodovky  
 
-### ### 3.2 Toyota RAV4
-- **Rok výroby:** 2015  
-- **Motor:** 2.0 D-4D (1AD-FTV), nafta, 91 kW :contentReference[oaicite:0]{index=0}  
-- **Převodovka:** manuální  
-- **Aktuální nájezd:** 179 000 km  
-- **Poslední servis:** 7. 12. 2024 při 165 000 km  
-
 ### ### 3.3 Dodge Grand Caravan
 - **Rok výroby:** 2014  
 - **Motor:** 3.6 Pentastar V6, benzín  
@@ -63,13 +56,6 @@ Cílem je mít přehled o údržbě všech vozidel – zaznamenat, kdy byl posle
 - Motorový olej: plně syntetický olej podle specifikace VW (např. 5W-30 nebo dle servisního manuálu)  
 - Kabinový, palivový, vzduchový filtr: standardní filtry doporučené pro typ motoru a konstrukci vozu  
 - Automatická převodovka: olej + filtr (pokud konstrukce umožňuje výměnu) každých 60 000–80 000 km  
-
-### **Toyota RAV4 (2015, 2.0 D-4D nafta)**  
-- Olej + olejový filtr: např. syntetický olej 0W-30 nebo 5W-30 vhodný pro diesel, kapacita motoru ~ 5,9 l pro plnou náplň + filtr 0,4 l :contentReference[oaicite:2]{index=2}  
-- Palivový filtr: kvalitní filtr určený pro diesel s Common-rail systémem (doporučeno vzhledem k citlivosti vstřikování) — s ohledem na rizika podle motoru 1AD-FTV (EGR, DPF) :contentReference[oaicite:3]{index=3}  
-- Vzduchový a kabinový filtr: běžné filtry pro daný model  
-- Brzdové destičky / kotouče: sada destiček + kotouče vhodné pro RAV4  
-- Doporučení: kvůli specifikům motoru sledovat stav EGR, DPF a vstřikovací soustavy  
 
 ### **Dodge Grand Caravan (2014, 3.6 V6 benzín, automat)**  
 - Olej + olejový filtr: plně syntetický olej pro V6 benzínový motor (dle manuálu), filtr podle specifikace Pentastar 3.6  
@@ -90,7 +76,6 @@ Níže je tabulka s doporučením motorového oleje pro každé z vašich vozide
 | Auto | Motor / základní údaje | Doporučený olej (výrobce / standard) | Alternativy / běžné oleje | Poznámka |
 |------|------------------------|---------------------------------------|----------------------------|----------|
 | **VW UP! (2014, 1.0 benzín, automat)** | 1.0 l benzín, malý městský motor | Plně syntetický olej 5W‑30, norma API SN / ACEA (low‑SAPS / Cx) | 0W‑40 — plně syntetický | 5W‑30 je ideální pro běžný provoz, dobrý kompromis mezi mazáním a spotřebou; 0W‑40 může poskytnout lepší ochranu při delších cestách nebo vyšší zátěži |
-| **Toyota RAV4 (2015, 2.0 D‑4D diesel)** | 2.0 D‑4D diesel, naftový motor (možné DPF/EGR) | 5W‑30 plně syntetický, norma API SN/CF + ACEA C3 / low‑ash (SAPS) | 5W‑30, případně 5W‑40 pokud je olej kompatibilní s diesel motory a emisními systémy | 5W‑30 plně vyhovuje běžným požadavkům, low‑ash oleje jsou vhodné při DPF/EGR; 5W‑40 může být volbou pro vyšší zátěž či delší intervaly |
 | **Dodge Grand Caravan (2014, 3.6 V6 benzín, automat)** | 3.6 V6 benzín, větší motor | Podle výrobce: 5W‑20 plně syntetický (nebo dle majitele možná i 5W‑30 při vhodné kvalitě) | 5W‑30 plně syntetický | 5W‑20 je originální doporučení; 5W‑30 lze použít jako bezpečnou, univerzálnější volbu, pokud chcete snadnější dostupnost oleje a robustní mazání při vyšší zátěži |
 
 ---
@@ -154,18 +139,6 @@ Pokud však chceš dodržet přesné doporučení výrobce pro každý motor, je
 
 ---
 
-### 5.2 Toyota RAV4 (2015, 2.0 D-4D nafta, manuál)
-
-| Komponenta | Doporučený díl / kapalina (příklad) | Poznámka |
-|-----------|------------------------------------|----------|
-| Olejový filtr | Olejový filtr kompatibilní s Toyota RAV4 2.0 D-4D (např. z katalogu autodílů) | běžná náhrada dostupná na trhu :contentReference[oaicite:5]{index=5} |
-| Motorový olej | Motorový olej vhodný pro diesel (dle specifikací výrobce) | vždy ověřit viskozitu a normy podle servisní příručky |
-| Vzduchový filtr | Vzduchový filtr uvedený pro RAV4 2.0 D-4D | běžný díl dostupný u e-shopů s autodíly :contentReference[oaicite:6]{index=6} |
-| Palivový filtr / filtr naftový | Filtr určený pro diesel s Common-rail motorem | důležité při údržbě vznětového motoru, zvlášť při vyšším nájezdu :contentReference[oaicite:7]{index=7} |
-| Kabinový filtr (pylový) | Standardní kabinový filtr pro RAV4 | pro komfort a kvalitu vzduchu v interiéru |
-
----
-
 ### 5.3 Volkswagen UP! (2014, 1.0 benzín, automat)
 
 | Komponenta | Doporučený díl / kapalina (příklad) | Poznámka |
@@ -208,5 +181,4 @@ Bosch Automotive (2022). *Vehicle Maintenance Guidelines*. Bosch Mobility Group.
 Škoda Auto (2023). *Service Intervals and Vehicle Care Recommendations*. Škoda Auto a.s.  
 Castrol (2021). *Engine Oil Specification and Change Intervals*. Castrol Ltd.  
 Volkswagen AG (2023). *Maintenance Schedule Overview*. VW Group Service Documentation.  
-Toyota Motor Corporation (2023). *Diesel Engine Maintenance Recommendations*. Toyota Service Publications.  
 FCA Group (2022). *Pentastar V6 Maintenance Guidelines*. Stellantis Technical Library.  
