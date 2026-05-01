@@ -8,7 +8,7 @@
 - [ ] Odpovídá stav km inzerátu a stavu vozu?
 - [ ] Shoduje se VIN na karoserii a v dokladech?
 - [ ] Je LPG přestavba zapsaná v TP?
-- [ ] Kolikátý je to majitel v ČR? (Dovezen z USA přes Německo?)
+- [ ] Kolikátý je to majitel v ČR? (Zda dovezen z USA přes Německo?)
 - [ ] Jsou k dispozici servisní záznamy? CEBIA report?
 
 ## 🧰 Motor a pohon
