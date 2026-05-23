@@ -9,8 +9,7 @@ from datetime import datetime
 MARKDOWN_DIR = 'markdown'
 HTML_DIR = 'navody'
 INDEX_FILE = 'index.html'
-# Vaše preferované pořadí hlavních kategorií
-PREFERRED_ORDER = ['IoT', 'Automatizace', 'Informatika', 'Elektronika', 'Cestování', 'Domácnost', 'Počítače']
+CATEGORY_ORDER = ['IoT', 'Automatizace', 'Informatika', 'Elektronika', 'Cestování', 'Domácnost', 'Počítače']
 
 # === VYTVOR SLOŽKY PRO HTML ===
 os.makedirs(HTML_DIR, exist_ok=True)
@@ -41,8 +40,6 @@ except subprocess.CalledProcessError:
 
 # === ZPRACUJ VŠECHNY .md SOUBORY ===
 navody_html = []
-found_categories = set()  # Sem budeme ukládat všechny kategorie ze souborů
-
 for md_file in sorted(os.listdir(MARKDOWN_DIR)):
     if not md_file.endswith('.md'):
         continue
@@ -56,10 +53,6 @@ for md_file in sorted(os.listdir(MARKDOWN_DIR)):
 
     title = metadata.get('title', name)
     category = metadata.get('category', 'Nezařazeno')
-
-    # Uložíme nalezenou kategorii pro pozdější vygenerování tlačítek
-    found_categories.add(category)
-
     tags = metadata.get('tags', [])
     html = markdown.markdown(text, extensions=['fenced_code', 'tables'])
     last_modified = get_git_last_modified_date(md_path)
@@ -83,16 +76,9 @@ for md_file in sorted(os.listdir(MARKDOWN_DIR)):
         'title': title,
         'category': category,
         'tags': tags,
-        'md_link': f'markdown/{name}.md',  # Opraveno na .md podle předchozího tipu
+        'md_link': f'markdown/{name}.md',
         'last_modified': last_modified
     })
-
-# === DYNAMICKÉ SESTAVENÍ SEZNAMU KATEGORIÍ ===
-# Vezmeme preferované, ale přidáme k nim i ty nově nalezené, které v seznamu chybí
-CATEGORY_ORDER = list(PREFERRED_ORDER)
-for cat in sorted(found_categories):
-    if cat not in CATEGORY_ORDER:
-        CATEGORY_ORDER.append(cat)
 
 # === GENERUJ index.html ===
 with open(INDEX_FILE, 'w', encoding='utf-8') as f:
@@ -204,3 +190,4 @@ try:
     print("✅ Změny odeslány na GitHub.")
 except subprocess.CalledProcessError:
     print("⚠️ Git commit/push selhal – možná nejsou žádné změny.")
+
