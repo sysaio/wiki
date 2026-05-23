@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"><title>MUTT - konfigurace, šifrování, autentizace a synchronizace</title></head>
+<head>
+  <meta charset="UTF-8">
+  <title>MUTT - konfigurace, šifrování, autentizace a synchronizace</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 2em; line-height: 1.6; }
+    img { max-width: 100%; height: auto; }
+    pre { background: #f4f4f4; padding: 1em; border-radius: 5px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+  </style>
+</head>
 <body>
 <p>Tento návod popisuje, jak nakonfigurovat Mutt pro bezpečné odesílání a přijímání e-mailů s podporou GPG šifrování, autentizace přes OAuth2 a automatickou synchronizaci pomocí mbsync a cron.</p>
 <h3>🛠️ Instalace potřebných balíčků</h3>
@@ -100,8 +111,8 @@ Sync Pull
 <p>$ mutt-oauth2 --authorize
 OAuth2 registration (google, microsoft) [google]:   stiskni ENTER    <br />
 Account e-mail address: rabukate@gmail.com
-Client ID:  56508150926.apps.googleusercontent.com
-Client Secret:  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</p>
+Client ID:  "MOJE_TAJNE_CLIENT_://googleusercontent.com"
+Client Secret:  "MOJE_TAJNE_CLIENT_SECRET"</p>
 <h3>📬 Spuštění Mutt</h3>
 <pre><code>mutt
 </code></pre>
@@ -144,6 +155,7 @@ python3 ~/.mutt-oauth2/mutt_oauth2.py ~/.mutt-oauth2/token.gpg --refresh
 ::contentReference[oaicite:5]{index=5}</p>
 </li>
 </ul>
-<p><a href="../index.html">← Zpět na přehled</a></p>
+
+<p style="margin-top: 2em;"><a href="../index.html">← Zpět na přehled</a></p>
 </body>
 </html>

@@ -8,13 +8,12 @@ from datetime import datetime
 # === KONSTANTY ===
 MARKDOWN_DIR = 'markdown'
 HTML_DIR = 'navody'
-IMAGES_DIR = 'images'
 INDEX_FILE = 'index.html'
+# Vaše preferované pořadí hlavních kategorií
 PREFERRED_ORDER = ['IoT', 'Automatizace', 'Informatika', 'Elektronika', 'Cestování', 'Domácnost', 'Počítače']
 
-# === VYTVOŘ SLOŽKY ===
+# === VYTVOR SLOŽKY PRO HTML ===
 os.makedirs(HTML_DIR, exist_ok=True)
-os.makedirs(IMAGES_DIR, exist_ok=True)
 
 # === POMOCNÁ FUNKCE PRO YAML FRONTMATTER ===
 def parse_frontmatter(text):
@@ -40,16 +39,9 @@ try:
 except subprocess.CalledProcessError:
     print("⚠️ Nepodařilo se provést git pull.")
 
-# === NAČTI VŠECHNY OBRÁZKY ZE SLOŽKY IMAGES ===
-# Podporované přípony obrázků
-IMAGE_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg')
-all_images = []
-if os.path.exists(IMAGES_DIR):
-    all_images = [img for img in os.listdir(IMAGES_DIR) if img.lower().endswith(IMAGE_EXTENSIONS)]
-
 # === ZPRACUJ VŠECHNY .md SOUBORY ===
 navody_html = []
-found_categories = set()
+found_categories = set()  # Sem budeme ukládat všechny kategorie ze souborů
 
 for md_file in sorted(os.listdir(MARKDOWN_DIR)):
     if not md_file.endswith('.md'):
@@ -64,29 +56,13 @@ for md_file in sorted(os.listdir(MARKDOWN_DIR)):
 
     title = metadata.get('title', name)
     category = metadata.get('category', 'Nezařazeno')
+
+    # Uložíme nalezenou kategorii pro pozdější vygenerování tlačítek
     found_categories.add(category)
 
     tags = metadata.get('tags', [])
     html = markdown.markdown(text, extensions=['fenced_code', 'tables'])
     last_modified = get_git_last_modified_date(md_path)
-
-    # --- AUTOMATICKÉ PŘIŘAZENÍ OBRÁZKŮ ---
-    # Hledáme obrázky, které začínají na: "název_článku."
-    prefix = f"{name}."
-    assigned_images = [img for img in all_images if img.startswith(prefix)]
-
-    # Vygenerujeme HTML pro galerii, pokud nějaké obrázky existují
-    images_html = ""
-    if assigned_images:
-        images_html += '\n<div class="article-gallery" style="margin-top: 2em; border-top: 1px solid #ccc; padding-top: 1em;">\n'
-        images_html += '  <h3>📷 Přiložené fotografie:</h3>\n'
-        images_html += '  <div style="display: flex; gap: 10px; flex-wrap: wrap;">\n'
-        for img in sorted(assigned_images):
-            # Cesta k obrázku je relativní z pohledu složky 'navody' (tedy o úroveň výš a do 'images')
-            img_path_rel = f"../{IMAGES_DIR}/{img}"
-            images_html += f'    <a href="{img_path_rel}" target="_blank"><img src="{img_path_rel}" alt="{img}" style="max-width: 200px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px; padding: 5px; object-fit: cover;"></a>\n'
-        images_html += '  </div>\n'
-        images_html += '</div>\n'
 
     html_file = f"{name}.html"
     html_path = os.path.join(HTML_DIR, html_file)
@@ -94,22 +70,10 @@ for md_file in sorted(os.listdir(MARKDOWN_DIR)):
     with open(html_path, 'w', encoding='utf-8') as f:
         f.write(f'''<!DOCTYPE html>
 <html>
-<head>
-  <meta charset="UTF-8">
-  <title>{title}</title>
-  <style>
-    body {{ font-family: sans-serif; max-width: 800px; margin: auto; padding: 2em; line-height: 1.6; }}
-    img {{ max-width: 100%; height: auto; }}
-    pre {{ background: #f4f4f4; padding: 1em; border-radius: 5px; overflow-x: auto; }}
-    table {{ width: 100%; border-collapse: collapse; margin: 1em 0; }}
-    th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-    th {{ background-color: #f2f2f2; }}
-  </style>
-</head>
+<head><meta charset="UTF-8"><title>{title}</title></head>
 <body>
 {html}
-{images_html}
-<p style="margin-top: 2em;"><a href="../index.html">← Zpět na přehled</a></p>
+<p><a href="../index.html">← Zpět na přehled</a></p>
 </body>
 </html>''')
 
@@ -119,11 +83,12 @@ for md_file in sorted(os.listdir(MARKDOWN_DIR)):
         'title': title,
         'category': category,
         'tags': tags,
-        'md_link': f'markdown/{name}.md',
+        'md_link': f'markdown/{name}.md',  # Opraveno na .md podle předchozího tipu
         'last_modified': last_modified
     })
 
 # === DYNAMICKÉ SESTAVENÍ SEZNAMU KATEGORIÍ ===
+# Vezmeme preferované, ale přidáme k nim i ty nově nalezené, které v seznamu chybí
 CATEGORY_ORDER = list(PREFERRED_ORDER)
 for cat in sorted(found_categories):
     if cat not in CATEGORY_ORDER:
@@ -234,7 +199,7 @@ with open(INDEX_FILE, 'w', encoding='utf-8') as f:
 # === GIT COMMIT A PUSH ===
 try:
     subprocess.run(['git', 'add', '.'], check=True)
-    subprocess.run(['git', 'commit', '-m', 'Automatická aktualizace wiki s obrázky'], check=True)
+    subprocess.run(['git', 'commit', '-m', 'Automatická aktualizace wiki s YAML metadaty'], check=True)
     subprocess.run(['git', 'push'], check=True)
     print("✅ Změny odeslány na GitHub.")
 except subprocess.CalledProcessError:

@@ -106,8 +106,8 @@ Tento návod popisuje, jak nakonfigurovat Mutt pro bezpečné odesílání a př
 $ mutt-oauth2 --authorize
 OAuth2 registration (google, microsoft) [google]:   stiskni ENTER      
 Account e-mail address: rabukate@gmail.com
-Client ID:  56508150926.apps.googleusercontent.com
-Client Secret:  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
+Client ID:  "MOJE_TAJNE_CLIENT_://googleusercontent.com"
+Client Secret:  "MOJE_TAJNE_CLIENT_SECRET"
 
 ### 📬 Spuštění Mutt
     mutt
