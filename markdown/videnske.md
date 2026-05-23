@@ -1,6 +1,6 @@
 ---
 title: Maminčiny vídeňské knedlíčky v konvektomatu
-category: Domácnost
+category: Recepty
 tags: [recept, knedlíky, kuchyně]
 last_update: 2025-07-09
 ---
