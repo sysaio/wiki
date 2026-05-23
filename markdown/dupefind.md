@@ -58,8 +58,10 @@ Parametry:
   - `-r` rekurzivně  
   - `-d` mazání duplicit (vyžaduje interakci)  
   - `-N` automaticky vybrat první soubor (bez výzvy)  
-- Pouze zobrazit duplicitní soubory:  
+- Pouze zobrazit duplicitní soubory (rekurzivně):
 fdupes -r /cesta/k/slozce
+fdupes -rS /cesta/k/slozce // včetně zobrazení velikosti
+fdupes -rSd /cesta/k/slozce // včetně zobrazení velikosti a možnosti výběru které smazat a kreré ponechat
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Sociální inženýrství (Social Engineering)
-category: Počítače
+category: Informatika
 tags: [internet, socialní, inženýring, ochrana, kyberbezpečnost]
 last_update: 2025-07-29
 ---

@@ -1,6 +1,6 @@
 ---
 title: Crontab – plánovnání úloh
-category: Počítače
+category: Automatizace
 tags: [linux, automatizace, spousteni]
 last_update: 2025-07-09
 ---

@@ -1,6 +1,6 @@
 ---
 title: ESP IDF setup – moderní vývojové prostředí
-category: Počítače
+category: IoT
 tags: [linux, mikrokontrolery, espressif]
 last_update: 2025-07-09
 ---

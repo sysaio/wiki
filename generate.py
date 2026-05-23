@@ -9,7 +9,7 @@ from datetime import datetime
 MARKDOWN_DIR = 'markdown'
 HTML_DIR = 'navody'
 INDEX_FILE = 'index.html'
-CATEGORY_ORDER = ['Elektronika', 'Cestování', 'Domácnost', 'Počítače']
+CATEGORY_ORDER = ['IoT', 'Automatizace', 'Informatika', 'Elektronika', 'Cestování', 'Domácnost', 'Počítače']
 
 # === VYTVOR SLOŽKY PRO HTML ===
 os.makedirs(HTML_DIR, exist_ok=True)
@@ -76,7 +76,7 @@ for md_file in sorted(os.listdir(MARKDOWN_DIR)):
         'title': title,
         'category': category,
         'tags': tags,
-        'md_link': f'markdown/{name}.html',
+        'md_link': f'markdown/{name}.md',
         'last_modified': last_modified
     })
 

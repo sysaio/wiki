@@ -1,3 +1,10 @@
+---
+title: "Raspberry Pi 5: Přesun systému na NVMe"
+category: Počítače
+tags: [internet, RPi, systém, programování]
+last_update: 2025-07-29
+---
+
 ## 🛡️ Raspberry Pi 5: Přesun systému na NVMe + Šifrované zálohovací kontejnery
 
 ---

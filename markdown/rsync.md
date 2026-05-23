@@ -1,6 +1,6 @@
 ---
 title: rsync – zálohování v linuxu
-category: Počítače
+category: Automatizace
 tags: [linux, zalohovani]
 last_update: 2025-07-09
 ---

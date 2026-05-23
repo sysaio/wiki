@@ -1,6 +1,6 @@
 ---
 title: Přehled REST API – jednoduchý průvodce
-category: Počítače
+category: Informatika
 tags: [internet, REST, HTTP, programování]
 last_update: 2025-07-29
 ---

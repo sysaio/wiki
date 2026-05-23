@@ -1,6 +1,6 @@
 ---
 title: Analýza a Automatizace Procesů
-category: Počítače
+category: Automatizace
 tags: [automatizace, analýza, procesy, podnik]
 last_update: 2026-05-03
 ---

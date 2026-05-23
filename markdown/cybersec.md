@@ -1,6 +1,6 @@
 ---
 title: Cybersecurity – Přehled doporučení a hrozeb (z přednášky / školení)
-category: Počítače
+category: Informatika
 tags: [ukládání, zálohování, kryptografie, kyberbezpečnost]
 last_update: 2025-07-29
 ---

@@ -1,6 +1,6 @@
 ---
 title: Bezpečnost pomocí MikroTik L009UiGS-2HaxD-IN
-category: Počítače
+category: Informatika
 tags: [linux, firewall, konfigurace, kyberbezpečnost]
 last_update: 2025-07-29
 ---

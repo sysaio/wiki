@@ -1,6 +1,6 @@
 ---
 title: Šifrovaná komunikace a IM (Signal, Threema, Matrix)
-category: Počítače
+category: Informatika
 tags: [internet, mobil, zpravy, sifrovani, kyberbezpečnost]
 last_update: 2025-07-29
 ---

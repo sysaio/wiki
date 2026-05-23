@@ -1,6 +1,6 @@
 ---
 title: Mobile Device Management (MDM)
-category: Počítače
+category: Informatika
 tags: [internet, mobil, politika, aplikace, sifrovani, kyberbezpečnost]
 last_update: 2025-07-29
 ---

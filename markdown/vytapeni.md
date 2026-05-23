@@ -1,6 +1,6 @@
 ---
 title: Vytápění domečku
-category: TZB
+category: IoT
 tags: [vytapění, MND, domácnost]
 last_update: 2025-08-21
 ---
