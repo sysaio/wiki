@@ -41,7 +41,6 @@ except subprocess.CalledProcessError:
     print("⚠️ Nepodařilo se provést git pull.")
 
 # === NAČTI VŠECHNY OBRÁZKY ZE SLOŽKY IMAGES ===
-# Podporované přípony obrázků
 IMAGE_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg')
 all_images = []
 if os.path.exists(IMAGES_DIR):
@@ -71,18 +70,15 @@ for md_file in sorted(os.listdir(MARKDOWN_DIR)):
     last_modified = get_git_last_modified_date(md_path)
 
     # --- AUTOMATICKÉ PŘIŘAZENÍ OBRÁZKŮ ---
-    # Hledáme obrázky, které začínají na: "název_článku."
     prefix = f"{name}."
     assigned_images = [img for img in all_images if img.startswith(prefix)]
 
-    # Vygenerujeme HTML pro galerii, pokud nějaké obrázky existují
     images_html = ""
     if assigned_images:
         images_html += '\n<div class="article-gallery" style="margin-top: 2em; border-top: 1px solid #ccc; padding-top: 1em;">\n'
         images_html += '  <h3>📷 Přiložené fotografie:</h3>\n'
         images_html += '  <div style="display: flex; gap: 10px; flex-wrap: wrap;">\n'
         for img in sorted(assigned_images):
-            # Cesta k obrázku je relativní z pohledu složky 'navody' (tedy o úroveň výš a do 'images')
             img_path_rel = f"../{IMAGES_DIR}/{img}"
             images_html += f'    <a href="{img_path_rel}" target="_blank"><img src="{img_path_rel}" alt="{img}" style="max-width: 200px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px; padding: 5px; object-fit: cover;"></a>\n'
         images_html += '  </div>\n'
@@ -115,11 +111,10 @@ for md_file in sorted(os.listdir(MARKDOWN_DIR)):
 
     navody_html.append({
         'name': name,
-        'file': html_file,
         'title': title,
         'category': category,
         'tags': tags,
-        'md_link': f'markdown/{name}.md',
+        'link': f'navody/{html_file}', # Odkaz na vygenerované HTML
         'last_modified': last_modified
     })
 
@@ -170,8 +165,7 @@ with open(INDEX_FILE, 'w', encoding='utf-8') as f:
       <tr>
         <th>Kategorie</th>
         <th>Poslední úprava</th>
-        <th>Návod (HTML)</th>
-        <th>GitHub (Markdown)</th>
+        <th>Návod</th>
         <th>Tisk</th>
         <th>Zpětná vazba</th>
       </tr>
@@ -183,8 +177,7 @@ with open(INDEX_FILE, 'w', encoding='utf-8') as f:
         f.write(f'''      <tr data-category="{navod['category']}">
         <td>{navod['category']}</td>
         <td>{navod['last_modified']}</td>
-        <td><a href="navody/{navod['file']}">{navod['title']}</a></td>
-        <td><a href="{navod['md_link']}">{navod['title']}</a></td>
+        <td><a href="{navod['link']}">{navod['title']}</a></td>
         <td><button onclick="window.print()">🖨️</button></td>
         <td>
           <form onsubmit="alert('Děkujeme za zpětnou vazbu!'); return false;">
@@ -234,7 +227,7 @@ with open(INDEX_FILE, 'w', encoding='utf-8') as f:
 # === GIT COMMIT A PUSH ===
 try:
     subprocess.run(['git', 'add', '.'], check=True)
-    subprocess.run(['git', 'commit', '-m', 'Automatická aktualizace wiki s obrázky'], check=True)
+    subprocess.run(['git', 'commit', '-m', 'Zjednoduseni tabulky na jeden sloupec Navod'], check=True)
     subprocess.run(['git', 'push'], check=True)
     print("✅ Změny odeslány na GitHub.")
 except subprocess.CalledProcessError:
