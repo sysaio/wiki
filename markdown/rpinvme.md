@@ -1,6 +1,6 @@
 ---
 title: "Raspberry Pi 5: Přesun systému na NVMe"
-category: Počítače
+category: IoT
 tags: [internet, RPi, systém, programování]
 last_update: 2025-07-29
 ---
