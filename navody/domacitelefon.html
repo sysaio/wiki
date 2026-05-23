@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Výměna domácího telefonu Urmet (4+n)</title></head>
+<body>
+<h1>🏠 Výměna domácího telefonu Urmet (4+n)</h1>
+<h2>📱 Technické specifikace</h2>
+<h3>Původní zařízení</h3>
+<ul>
+<li><strong>Výrobce:</strong> Urmet</li>
+<li><strong>Označení základní desky (PCB):</strong> <code>CS1132-001E</code></li>
+<li><strong>Typ systému:</strong> Analogový audio systém $4+n$</li>
+<li><strong>Stav:</strong> Nefunkční vyzvánění, utržený reproduktor, mechanické opotřebení.</li>
+</ul>
+<h3>Nové zařízení (Přímá náhrada)</h3>
+<ul>
+<li><strong>Model:</strong> <strong>Urmet Miro 1150</strong> (případně verze s jedním servisním tlačítkem navíc <strong>Urmet Miro 1150/1</strong>)</li>
+<li><strong>Kompatibilita:</strong> Plná hardwarová i schématická kompatibilita s původním systémem 4+n.</li>
+</ul>
+<hr />
+<h2>🔌 Schéma a tabulka zapojení vodičů</h2>
+<p>Zapojení odpovídá stávající barevné konfiguraci vodičů na svorkovnici původní desky <code>CS1132-001E</code>. Číslování svorek je u nového modelu <strong>Urmet Miro 1150</strong> identické.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Funkce</th>
+<th style="text-align: center;">Původní svorka</th>
+<th style="text-align: center;">Barva vodiče v instalaci</th>
+<th style="text-align: center;">Nová svorka (Urmet Miro 1150)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Sluchátko</strong> (příchozí hlas zvenku)</td>
+<td style="text-align: center;"><strong>1</strong></td>
+<td style="text-align: center;">Bílý ⚪</td>
+<td style="text-align: center;"><strong>1</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mikrofon</strong> (odchozí hlas ven)</td>
+<td style="text-align: center;"><strong>2</strong></td>
+<td style="text-align: center;">Zelený 🟢</td>
+<td style="text-align: center;"><strong>2</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Společná zem</strong> (GND / COM)</td>
+<td style="text-align: center;"><strong>6</strong></td>
+<td style="text-align: center;">Modrý 🔵</td>
+<td style="text-align: center;"><strong>6</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Elektrický zámek</strong> (otevírání dveří)</td>
+<td style="text-align: center;"><strong>9</strong></td>
+<td style="text-align: center;">Červený 🔴</td>
+<td style="text-align: center;"><strong>9</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Vyzvánění</strong> (elektronický tón)</td>
+<td style="text-align: center;"><strong>CA</strong></td>
+<td style="text-align: center;">Hnědý 🟤</td>
+<td style="text-align: center;"><strong>CA</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>⚠️ Důležitá upozornění k instalaci</h2>
+<blockquote>
+<p>[!WARNING]
+<strong>Svorka 6 vs. Svorka 10</strong>
+Na staré desce <code>CS1132-001E</code> jsou svorky <strong>6</strong> and <strong>10</strong> hardwarově propojené přímo integrovaným plošným spojem. Společný modrý vodič je proto zapojen na pozici 6. U nového telefonu <strong>Urmet Miro 1150</strong> stačí tento modrý vodič zapojit <strong>čistě do svorky 6</strong>. Svorku 10 (pokud je na dané revizi osazena) ponechte prázdnou a nepropojujte ji.</p>
+<p>[!CAUTION]
+<strong>Spolehlivost barevného značení</strong>
+Výše uvedené barvy (bílý, zelený, modrý, červený, hnědý) jsou specifické pro tuto konkrétní instalaci. Při jakémkoliv dalším zásahu do systému v domě nelze na barvy stoprocentně spoléhat bez předchozího ověření multimetrem.</p>
+</blockquote>
+<hr />
+<h2>🛠️ Diagnostika a ověření funkčnosti (pro případné ladění)</h2>
+<p>Pokud by po zapojení nového telefonu cokoliv nefungovalo, standardní diagnostický postup pro systém 4+n je následující:</p>
+<ol>
+<li><strong>Měření vyzváněcího signálu:</strong> Při zazvonění od vchodu se musí na <strong>svorce CA</strong> proti <strong>svorce 6</strong> objevit střídavé napětí v rozsahu <strong>8–12 V AC</strong>.</li>
+<li><strong>Otevírání zámku:</strong> Stiskem tlačítka klíče na telefonu dojde k mechanickému propojení <strong>svorky 9</strong> se <strong>svorkou 6</strong> (společná zem), což aktivuje relé zámku u vchodových dveří.</li>
+<li><strong>Problém se zavěšením:</strong> Pokud telefon trvale přenáší zvuk a nereaguje na vyzvánění, zkontrolujte, zda plastová vidlice správně domáčkne vnitřní spínač na desce.</li>
+</ol>
+<p><a href="../index.html">← Zpět na přehled</a></p>
+</body>
+</html>
