@@ -1,6 +1,6 @@
 ---
 title: Ozzákův guláš
-category: Domácnost
+category: Recepty
 tags: [recept, guláš, hovězí, kuchyně]
 last_update: 2025-07-09
 ---
