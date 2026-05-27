@@ -1,6 +1,6 @@
 ---
 title: Rohle pro Ozzáka (pivní rohlíky)
-category: Domácnost
+category: Recepty
 tags: [recept, rohlíky, domacipekarna, kuchyně]
 last_update: 2025-07-09
 ---
