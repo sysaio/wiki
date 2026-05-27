@@ -1,6 +1,6 @@
 ---
 title: Kvašáky různé recepty
-category: Domácnost
+category: Recepty
 tags: [recept, kvašáky, kuchyně]
 last_update: 2025-09-09
 ---
