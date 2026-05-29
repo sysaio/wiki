@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>qwen3-vl:8b-instruct</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 2em; line-height: 1.6; }
+    img { max-width: 100%; height: auto; }
+    pre { background: #f4f4f4; padding: 1em; border-radius: 5px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+  </style>
+</head>
+<body>
+<h1>🚀 Návod: Instalace a spuštění Qwen3-VL-8B-Instruct na lokálním serveru (Lenovo ThinkStation P720)</h1>
+<h2>📌 Úvod</h2>
+<p>Tento návod vás provede instalací a spuštěním <strong>Qwen3-VL-8B-Instruct</strong> – multimodálního (text + obrázek) modelu od Alibaba Cloud – na vašem <strong>Lenovo ThinkStation P720</strong>. Využijete jeho výkonnou infrastrukturu (2x Xeon Silver 4210, 64GB RAM, Quadro P5000) pro lokální AI pracovní prostředí bez internetu, vhodné pro práci se citlivými daty (např. 30letý internerý archiv).</p>
+<h2>⚙️ Požadavky</h2>
+<ul>
+<li><strong>OS:</strong> Ubuntu 26.04 LTS</li>
+<li><strong>Hardware:</strong></li>
+<li>64 GB DDR4 ECC RAM</li>
+<li>NVIDIA Quadro P5000 (16 GB GDDR5X VRAM)</li>
+<li>2x 2TB NVMe SSD (RAID 1)</li>
+<li><strong>Software:</strong></li>
+<li>Python 3.10+</li>
+<li>NVIDIA drivers (zpracování přes CUDA)</li>
+<li>CUDA toolkit 11.8+ (kompatibilní s Pascal architekturou)</li>
+<li>Git, pip, wget, curl, vim, docker (volitelně)</li>
+</ul>
+<h2>📥 1. Nainstalujte požadované závislosti</h2>
+<p>Otevřete terminál a spusťte:</p>
+<p>sudo apt update &amp;&amp; sudo apt upgrade -y
+sudo apt install -y git wget curl vim build-essential libgl1 libglib2.0-0 libsm6 libxext6 libxrender-dev libxinerama-dev libxi6
+sudo apt install -y python3.10 python3.10-venv python3.10-pip
+python3.10 -m venv ~/qwen3-venv
+source ~/qwen3-venv/bin/activate
+python3.10 -m pip install --upgrade pip
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+pip install transformers accelerate bitsandbytes sentencepiece accelerate
+pip install -U peft safetensors</p>
+<blockquote>
+<p>⚠️ Pokud máte GPU, <strong>nainstalujte PyTorch s CUDA 11.8</strong> → to je největší výhoda pro běh na Quadro P5000.</p>
+</blockquote>
+<h2>🎨 2. Stáhněte Qwen3-VL-8B-Instruct</h2>
+<p>mkdir -p ~/qwen3-models
+cd ~/qwen3-models
+wget https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct/resolve/main/Qwen3-VL-8B-Instruct.safetensors</p>
+<blockquote>
+<p>✅ Pokud se rozhodnete používat <strong>GGUF verzi</strong> → zde je návod pro Ollama (použitelný i v Dockeru):<br />
+<a href="https://ollama.com/library/qwen3-vl">Ollama Qwen3-VL GGUF</a></p>
+</blockquote>
+<h2>🐳 3. (Volitelně) Spuštění v Dockeru</h2>
+<p>sudo apt install docker.io docker-compose
+sudo usermod -aG docker $USER
+newgrp docker
+docker pull ollama/ollama:latest
+docker run -d --name ollama -p 11434:11434 -v /home/ubuntu/qwen3-models:/root/.ollama/models --gpus=all ollama/ollama</p>
+<blockquote>
+<p>Výhody: snadná instalace, bez potřeby nakonfigurovat vlastní prostředí.</p>
+</blockquote>
+<h2>🧠 4. (Volitelně) Finetuning vašich dat</h2>
+<p>pip install trl peft datasets evaluate accelerate
+export HF_HOME=/home/ubuntu/.cache/huggingface
+python -m trl.scripts.finetune_qwen3 --model_name_or_path Qwen/Qwen3-VL-8B-Instruct --dataset_path your_data.json --output_dir ./fine_tuned_qwen3_vl --per_device_train_batch_size 2 --gradient_accumulation_steps 4 --learning_rate 2e-5 --num_train_epochs 3 --fp16</p>
+<blockquote>
+<p>⚠️ Pro finetuning se vám bude vyžadovat <strong>minimálně 12 GB RAM + 8 GB VRAM</strong> – vaše 16 GB VRAM je v pořádku.</p>
+</blockquote>
+<h2>💬 5. Spuštění modelu v Pythonu</h2>
+<p>Vytvořte skript <code>run_qwen3_vl.py</code>:</p>
+<p>```python
+from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoProcessor, AutoModelForVision2Seq
+import torch
+from PIL import Image</p>
+<p>model_name = "Qwen/Qwen3-VL-8B-Instruct"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForVision2Seq.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")</p>
+<p>prompt = "Popiš tento obrázek."
+image = Image.open("your_image.jpg")
+processor = AutoProcessor.from_pretrained(model_name)
+inputs = processor(images=image, text=prompt, return_tensors="pt").to("cuda")
+outputs = model.generate(**inputs, max_new_tokens=128)
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))</p>
+<h2>📦 6. Spuštění přes Ollama</h2>
+<p>curl -fsSL https://ollama.com/install.sh | sh
+ollama pull qwen3-vl
+ollama run qwen3-vl</p>
+<p>Výhody: jednoduché, kompatibilní s více modely, výborně se hodí pro prototypování.</p>
+<p>✅ Shrnutí
+Vaše Lenovo ThinkStation P720 je úplně vhodné pro:</p>
+<p>Lokální běh Qwen3-VL-8B-Instruct
+Chatování, překlady, vyhledávání obrázků, finetuning na vašich 30letých datech
+Základní modely: využijte GPU Quadro P5000, RAM 64 GB a SSD</p>
+<p>📚 Zdroje
+Qwen3-VL-8B-Instruct: https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct
+PyTorch + CUDA setup: https://pytorch.org/get-started/locally/
+Ollama dokumentace: https://ollama.com/docs
+Finetuning s trl: https://huggingface.co/docs/trl
+GitHub Wiki: https://github.com/yourorg/your-repo/wiki
+📎 Citace (Harvard style)
+Alibabas Cloud. (2025). Qwen3-VL-8B-Instruct. Hugging Face. https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct
+Hugging Face. (2024). Transformers documentation. https://huggingface.co/docs/transformers
+PyTorch Team. (2024). PyTorch with CUDA. https://pytorch.org/get-started/locally/
+Ollama. (2025). Ollama: run models locally. https://ollama.com
+Hugging Face. (2024). Trainer and Finetuning Guide. https://huggingface.co/docs/trl</p>
+<p>Začínáme s AI? Nebo už jste už tady?
+Váš nápad na lokální AI je správný a významný krok – a já jsem zde, abych vám pomohl pokročit.
+💡 Nejde jen o modely, ale o významnou práci s daty, která zůstává u vás.</p>
+<p>Díky za důvěru! 🚀🤖</p>
+
+<p style="margin-top: 2em;"><a href="../index.html">← Zpět na přehled</a></p>
+</body>
+</html>
