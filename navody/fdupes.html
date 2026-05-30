@@ -19,123 +19,127 @@
 <h2>📦 Instalace</h2>
 <h3>Debian / Ubuntu</h3>
 <pre><code class="language-bash">sudo apt install fdupes
-Fedora
-sudo dnf install fdupes
-Arch Linux
-sudo pacman -S fdupes
-🔍 Vyhledání duplicit
-
-Vyhledání duplicit v jednom adresáři:
-
-fdupes /cesta/k/adresari
-
-Rekurzivní prohledání včetně podadresářů:
-
-fdupes -r /cesta/k/adresari
-📊 Zobrazení velikosti duplicit (-S)
-
-Pro zobrazení velikosti duplicitních souborů a odhad úspory místa použijte:
-
-fdupes -rS /cesta/k/adresari
-Kombinace parametrů
-fdupes -rS ~/Downloads
-
-Výstup bude obsahovat:
-
-📄 seznam duplicitních souborů
-📏 velikost jednotlivých skupin
-💾 odhad ušetřeného diskového prostoru
-🗑️ Interaktivní mazání duplicit
-
-Po nalezení duplicit lze spustit interaktivní mazání:
-
-fdupes -rd /cesta/k/adresari
-Nejčastější přepínače
-Parametr    Význam
--r  📂 Rekurzivní prohledávání podadresářů
--d  🗑️ Interaktivní mazání duplicit
--N  ⚡ Automaticky ponechá první soubor
--S  📊 Zobrazí velikost duplicit a úsporu místa
-⚠️ Automatické mazání bez potvrzení
-
-Používejte pouze pokud máte zálohu dat.
-
-fdupes -rdN /cesta/k/adresari
-
-Tento příkaz:
-
-📂 prohledá všechny podadresáře
-🔍 najde duplicity
-✅ ponechá první nalezenou kopii
-🗑️ odstraní ostatní bez potvrzení
-💡 Doporučený postup
-1️⃣ Nejprve zkontrolujte duplicity
-fdupes -rS /data
-2️⃣ Poté proveďte interaktivní mazání
-fdupes -rd /data
-3️⃣ Automatické mazání používejte opatrně
-fdupes -rdN /data
-🧪 Praktické příklady
-
-Vyhledání duplicit ve složce Downloads:
-
-fdupes -rS ~/Downloads
-
-Interaktivní odstranění duplicit:
-
-fdupes -rd ~/Downloads
-
-Automatické odstranění duplicit:
-
-fdupes -rdN ~/Downloads
-
-📚 Dokumentace
-
-man fdupes
-
-nebo
-
-fdupes --help
-🚨 Doporučení
-
-Před použitím parametrů -d nebo -N si vždy ověřte nalezené duplicity a mějte aktuální zálohu důležitých dat. 💾
-
-## 🔄 Porovnání dvou disků nebo adresářů
-
-`fdupes` umožňuje porovnat dva adresáře nebo disky a vyhledat soubory se shodným obsahem.
-
-### Základní porovnání
-
-```bash
-fdupes -r /mnt/disk1 /mnt/disk2
+</code></pre>
+<h3>Fedora</h3>
+<pre><code class="language-bash">sudo dnf install fdupes
+</code></pre>
+<h3>Arch Linux</h3>
+<pre><code class="language-bash">sudo pacman -S fdupes
+</code></pre>
+<hr />
+<h2>🔍 Vyhledání duplicit</h2>
+<p>Vyhledání duplicit v jednom adresáři:</p>
+<pre><code class="language-bash">fdupes /cesta/k/adresari
+</code></pre>
+<p>Rekurzivní prohledání včetně podadresářů:</p>
+<pre><code class="language-bash">fdupes -r /cesta/k/adresari
+</code></pre>
+<hr />
+<h2>📊 Zobrazení velikosti duplicit (-S)</h2>
+<p>Pro zobrazení velikosti duplicitních souborů a odhad úspory místa použijte:</p>
+<pre><code class="language-bash">fdupes -rS /cesta/k/adresari
+</code></pre>
+<h3>Kombinace parametrů</h3>
+<pre><code class="language-bash">fdupes -rS ~/Downloads
+</code></pre>
+<p>Výstup bude obsahovat:
+* 📄 Seznam duplicitních souborů
+* 📏 Velikost jednotlivých skupin
+* 💾 Odhad ušetřeného diskového prostoru</p>
+<hr />
+<h2>🗑️ Interaktivní mazání duplicit</h2>
+<p>Po nalezení duplicit lze spustit interaktivní mazání:</p>
+<pre><code class="language-bash">fdupes -rd /cesta/k/adresari
+</code></pre>
+<h3>Nejčastější přepínače</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parametr</th>
+<th style="text-align: left;">Význam</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>-r</code></td>
+<td style="text-align: left;">📂 Rekurzivní prohledávání podadresářů</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>-d</code></td>
+<td style="text-align: left;">🗑️ Interaktivní mazání duplicit</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>-N</code></td>
+<td style="text-align: left;">⚡ Automaticky ponechá první soubor</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>-S</code></td>
+<td style="text-align: left;">📊 Zobrazí velikost duplicit a úsporu místa</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>⚠️ Automatické mazání bez potvrzení</h2>
+<p>Používejte pouze pokud máte zálohu dat.</p>
+<pre><code class="language-bash">fdupes -rdN /cesta/k/adresari
+</code></pre>
+<p>Tento příkaz:
+1. 📂 Prohledá všechny podadresáře
+2. 🔍 Najde duplicity
+3. ✅ Ponechá první nalezenou kopii
+4. 🗑️ Odstraní ostatní bez potvrzení</p>
+<hr />
+<h2>💡 Doporučený postup</h2>
+<ol>
+<li><strong>Nejprve zkontrolujte duplicity</strong>
+   <code>bash
+   fdupes -rS /data</code></li>
+<li><strong>Poté proveďte interaktivní mazání</strong>
+   <code>bash
+   fdupes -rd /data</code></li>
+<li><strong>Automatické mazání používejte opatrně</strong>
+   <code>bash
+   fdupes -rdN /data</code></li>
+</ol>
+<hr />
+<h2>🧪 Praktické příklady</h2>
+<p>Vyhledání duplicit ve složce Downloads:</p>
+<pre><code class="language-bash">fdupes -rS ~/Downloads
+</code></pre>
+<p>Interaktivní odstranění duplicit:</p>
+<pre><code class="language-bash">fdupes -rd ~/Downloads
+</code></pre>
+<p>Automatické odstranění duplicit:</p>
+<pre><code class="language-bash">fdupes -rdN ~/Downloads
+</code></pre>
+<hr />
+<h2>🔄 Porovnání dvou disků nebo adresářů</h2>
+<p><code>fdupes</code> umožňuje porovnat dva adresáře nebo disky a vyhledat soubory se shodným obsahem.</p>
+<h3>Základní porovnání</h3>
+<pre><code class="language-bash">fdupes -r /mnt/disk1 /mnt/disk2
 </code></pre>
 <p>Příklad:</p>
 <pre><code class="language-bash">fdupes -r /data /backup
 </code></pre>
 <p>Výstup zobrazí všechny soubory, které existují na obou místech a mají identický obsah.</p>
-<hr />
 <h3>📊 Porovnání včetně velikostí (-S)</h3>
 <p>Pro zobrazení velikosti duplicit a odhadu možné úspory místa:</p>
 <pre><code class="language-bash">fdupes -rS /data /backup
 </code></pre>
-<p>Výstup obsahuje:</p>
-<ul>
-<li>📄 seznam duplicitních souborů</li>
-<li>📏 velikosti jednotlivých skupin</li>
-<li>💾 odhad ušetřeného diskového prostoru</li>
-</ul>
-<hr />
+<p>Výstup obsahuje:
+* 📄 Seznam duplicitních souborů
+* 📏 Velikosti jednotlivých skupin
+* 💾 Odhad ušetřeného diskového prostoru</p>
 <h3>🚚 Ověření migrace na nový disk</h3>
 <p>Po kopírování dat na nový disk lze ověřit, že jsou soubory skutečně identické:</p>
 <pre><code class="language-bash">fdupes -r /mnt/stary_disk /mnt/novy_disk
 </code></pre>
 <p>Pokud se soubory zobrazí jako duplicity, jejich obsah je shodný.</p>
-<hr />
 <h3>🗑️ Odstranění duplicit ze zálohy</h3>
 <p>Po ověření dat lze odstranit nadbytečné kopie:</p>
 <pre><code class="language-bash">fdupes -rd /data /backup
 </code></pre>
-<p>nebo automaticky:</p>
+<p>Nebo automaticky:</p>
 <pre><code class="language-bash">fdupes -rdN /data /backup
 </code></pre>
 <p>⚠️ Před použitím parametrů <code>-d</code> nebo <code>-N</code> vždy ověřte výsledek a mějte aktuální zálohu důležitých dat.</p>
@@ -144,34 +148,34 @@ fdupes -r /mnt/disk1 /mnt/disk2
 <p>Pokud potřebujete zjistit, které soubory mezi adresáři chybí nebo se liší, použijte:</p>
 <pre><code class="language-bash">rsync -avhn --delete /mnt/stary_disk/ /mnt/novy_disk/
 </code></pre>
-<p>Parametry:</p>
+<p><strong>Parametry rsync:</strong></p>
 <table>
 <thead>
 <tr>
-<th>Parametr</th>
-<th>Význam</th>
+<th style="text-align: left;">Parametr</th>
+<th style="text-align: left;">Význam</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>-a</code></td>
-<td>Archivní režim</td>
+<td style="text-align: left;"><code>-a</code></td>
+<td style="text-align: left;">Archivní režim</td>
 </tr>
 <tr>
-<td><code>-v</code></td>
-<td>Podrobný výpis</td>
+<td style="text-align: left;"><code>-v</code></td>
+<td style="text-align: left;">Podrobný výpis</td>
 </tr>
 <tr>
-<td><code>-h</code></td>
-<td>Čitelné velikosti</td>
+<td style="text-align: left;"><code>-h</code></td>
+<td style="text-align: left;">Čitelné velikosti</td>
 </tr>
 <tr>
-<td><code>-n</code></td>
-<td>Simulace bez změn</td>
+<td style="text-align: left;"><code>-n</code></td>
+<td style="text-align: left;">Simulace bez změn</td>
 </tr>
 <tr>
-<td><code>--delete</code></td>
-<td>Zobrazí přebývající soubory</td>
+<td style="text-align: left;"><code>--delete</code></td>
+<td style="text-align: left;">Zobrazí přebývající soubory</td>
 </tr>
 </tbody>
 </table>
@@ -181,20 +185,29 @@ fdupes -r /mnt/disk1 /mnt/disk2
 <p>Pro velmi rozsáhlá datová úložiště může být vhodný nástroj <code>rdfind</code>:</p>
 <pre><code class="language-bash">rdfind -makeresultsfile false /mnt/disk1 /mnt/disk2
 </code></pre>
-<p>Výhody:</p>
-<ul>
-<li>🚀 rychlé zpracování velkých objemů dat</li>
-<li>📊 podrobné statistiky</li>
-<li>🔗 podpora hardlinků</li>
-<li>🧹 efektivní práce s duplicitami</li>
-</ul>
+<p>Výhody:
+* 🚀 Rychlé zpracování velkých objemů dat
+* 📊 Podrobné statistiky
+* 🔗 Podpora hardlinků
+* 🧹 Efektivní práce s duplicitami</p>
+<hr />
+<h2>📚 Dokumentace a pomoc</h2>
+<pre><code class="language-bash">man fdupes
+</code></pre>
+<p>Nebo:</p>
+<pre><code class="language-bash">fdupes --help
+</code></pre>
+<h3>🚨 Doporučení</h3>
+<p>Před použitím parametrů <code>-d</code> nebo <code>-N</code> si vždy ověřte nalezené duplicity a mějte aktuální zálohu důležitých dat. 💾</p>
 <hr />
 <h1>📖 Literatura a zdroje</h1>
-<p>ADRIAN LOPEZ ROCHE. <em>fdupes – Identify or delete duplicate files</em>. GitHub. Dostupné z: https://github.com/adrianlopezroche/fdupes [cit. 2026-05-30].</p>
-<p>FDUPES. <em>Manual Page</em>. Linux Manual Pages. Dostupné z: https://manpages.debian.org/fdupes [cit. 2026-05-30].</p>
-<p>TOM'S HARDWARE. <em>How to Find and Delete Duplicate Files in Linux Using fdupes</em>. Dostupné z: https://www.tomshardware.com/how-to/delete-duplicate-files-in-linux-fdupes [cit. 2026-05-30].</p>
-<p>RSYNC PROJECT. <em>rsync Documentation</em>. Dostupné z: https://rsync.samba.org/documentation.html [cit. 2026-05-30].</p>
-<p>RDFIND PROJECT. <em>rdfind Documentation</em>. Dostupné z: https://rdfind.pauldreik.se [cit. 2026-05-30].</p>
+<ul>
+<li>ADRIAN LOPEZ ROCHE. <em>fdupes – Identify or delete duplicate files</em>. GitHub. Dostupné z: https://github.com/adrianlopezroche/fdupes [cit. 2026-05-30].</li>
+<li>FDUPES. <em>Manual Page</em>. Linux Manual Pages. Dostupné z: https://manpages.debian.org/fdupes [cit. 2026-05-30].</li>
+<li>TOM'S HARDWARE. <em>How to Find and Delete Duplicate Files in Linux Using fdupes</em>. Dostupné z: https://www.tomshardware.com/how-to/delete-duplicate-files-in-linux-fdupes [cit. 2026-05-30].</li>
+<li>RSYNC PROJECT. <em>rsync Documentation</em>. Dostupné z: https://rsync.samba.org/documentation.html [cit. 2026-05-30].</li>
+<li>RDFIND PROJECT. <em>rdfind Documentation</em>. Dostupné z: https://rdfind.pauldreik.se [cit. 2026-05-30].</li>
+</ul>
 
 <p style="margin-top: 2em;"><a href="../index.html">← Zpět na přehled</a></p>
 </body>
