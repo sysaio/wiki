@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>backup – zálohování do RPi5</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 2em; line-height: 1.6; }
+    img { max-width: 100%; height: auto; }
+    pre { background: #f4f4f4; padding: 1em; border-radius: 5px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+  </style>
+</head>
+<body>
+<h1>🗺️ Kompletní průvodce: Přesun Kubuntu na nové PC a vytvoření zrcadla (RAID 1)</h1>
+<p>Tento dokument slouží jako ucelený návod pro bezpečné zálohování, fyzický přesun systému Kubuntu na nový hardware a následné vytvoření živého softwarového zrcadla (RAID 1) ze dvou 256GB SATA SSD disků.</p>
+<hr />
+<h2>📦 1. Přenesení Linux instalace na jiný počítač (Záloha)</h2>
+<h3>Krok 1.1: Zjištění označení disků v Live distru</h3>
+<p>Nabootuj do Live USB Kubuntu, otevři terminál a ověř si aktuální strukturu disků:</p>
+<pre><code class="language-bash">lsblk
+</code></pre>
+<p><strong>Příklad výstupu (output):</strong></p>
+<pre><code class="language-text">sda           8:0    0 238,5G  0 disk
+├─sda1        8:1    0   300M  0 part /boot/efi
+└─sda2        8:2    0 238,2G  0 part /
+sdb           8:16   0   7,3T  0 disk
+└─sdb1        8:17   0   7,3T  0 part /mnt/data
+sdc           8:32   1  14,4G  0 disk
+├─sdc1        8:33   1  14,4G  0 part /media/liko/YUMI
+└─sdc2        8:34   1    32M  0 part
+nvme0n1     259:0    0   1,9T  0 disk
+└─nvme0n1p1 259:1    0   1,9T  0 part /media/liko/Movie
+</code></pre>
+<ul>
+<li><strong><code>sda</code></strong> =&gt; Systémový disk (SanDisk 256GB)</li>
+<li><strong><code>sdb</code></strong> =&gt; Datový disk (WD 8TB)</li>
+</ul>
+<h3>Krok 1.2: Připojení (mount) 8TB datového disku</h3>
+<p>Vytvoř adresář a připoj do něj oddíl z velkého disku, kam se bude záloha ukládat:</p>
+<pre><code class="language-bash">sudo mkdir -p /mnt/data
+sudo mount /dev/sdb1 /mnt/data
+</code></pre>
+<h3>Krok 1.3: Vytvoření bitové kopie (zálohy)</h3>
+<p>Tento příkaz vezme celý 256GB SanDisk (<code>/dev/sda</code>), za běhu ho zkomprimuje (aby nezabíral zbytečně moc místa) a uloží jako jeden soubor na 8TB disk. V terminálu uvidíš i ukazatel průběhu:</p>
+<pre><code class="language-bash">sudo dd if=/dev/sda status=progress | gzip &gt; /mnt/data/kubuntu_bocxod_20260531.img.gz
+</code></pre>
+<blockquote>
+<p>⚠️ <strong>Pozor:</strong> Dvakrát si zkontroluj, že za <code>if=</code> dáváš opravdu ten správný 256GB systémový disk (<code>/dev/sda</code>), ať si omylem nepřepíšeš data!</p>
+</blockquote>
+<h3>Krok 1.4: Ověření zálohy</h3>
+<p>Až proces skončí, ověř si, že se soubor na disku úspěšně vytvořil a má platnou velikost:</p>
+<pre><code class="language-bash">ls -lh /mnt/data/kubuntu_bocxod_20260531.img.gz
+</code></pre>
+<p>Nyní můžeš počítač vypnout a fyzicky přesunout disky (SanDisk i Micron) do nového PC.</p>
+<hr />
+<h2>🛠️ 2. Vytvoření RAID 1 (Zrcadla) zaživa na novém PC</h2>
+<p>Jakmile nabootuješ stávající systém v novém počítači, ověř si nová písmena disků pomocí <code>lsblk</code>. V této části návodu počítáme s tím, že:
+* <code>/dev/sda</code> = Původní disk <strong>SanDisk</strong> (obsahuje běžící systém Kubuntu).
+* <code>/dev/sdb</code> = Nový prázdný disk <strong>Micron</strong> (který přidáváme do zrcadla).</p>
+<h3>Krok 2.1: Příprava nového disku (Micron)</h3>
+<ol>
+<li><strong>Zkopírujte tabulku oddílů ze SanDisku na Micron:</strong>
+   <code>bash
+   sudo sfdisk -d /dev/sda | sudo sfdisk /dev/sdb</code></li>
+<li><strong>Změňte typ hlavního datového oddílu na Micronu na RAID:</strong>
+   <em>(Předpokládáme, že systémový oddíl je číslo 2, tedy <code>/dev/sdb2</code>)</em>
+   <code>bash
+   sudo sgdisk -t 2:fd00 /dev/sdb</code></li>
+</ol>
+<h3>Krok 2.2: Vytvoření degradovaného RAID pole</h3>
+<p>Vytvoříme zrcadlo pouze s jedním diskem (Micron). SanDisk zatím necháme jako chybějící (<code>missing</code>), protože z něj systém aktuálně běží.
+1. <strong>Vytvořte RAID pole <code>/dev/md0</code>:</strong>
+   <code>bash
+   sudo mdadm --create /dev/md0 --level=1 --raid-devices=2 missing /dev/sdb2</code>
+2. <strong>Vytvořte na novém RAID poli souborový systém (EXT4):</strong>
+   <code>bash
+   sudo mkfs.ext4 /dev/md0</code></p>
+<h3>Krok 2.3: Překopírování systému ze SanDisku na RAID</h3>
+<ol>
+<li><strong>Připojte nové RAID pole do dočasného adresáře:</strong>
+   <code>bash
+   sudo mkdir /mnt/novy_raid
+   sudo mount /dev/md0 /mnt/novy_raid</code></li>
+<li><strong>Překopírujte systém pomocí nástroje rsync:</strong>
+   <code>bash
+   sudo rsync -axHAWXS --numeric-ids --progress / /mnt/novy_raid/</code></li>
+</ol>
+<h3>Krok 2.4: Aktualizace konfigurace (UUID a Grub)</h3>
+<ol>
+<li><strong>Zjistěte nové UUID pro <code>/dev/md0</code>:</strong>
+   <code>bash
+   sudo blkid /dev/md0</code></li>
+<li><strong>Upravte soubor fstab na novém disku:</strong>
+   <code>bash
+   sudo nano /mnt/novy_raid/etc/fstab</code>
+   <em>(Nahraďte staré UUID kořenového adresáře <code>/</code> novým UUID pole <code>/dev/md0</code>)</em></li>
+<li><strong>Propojte systémové složky pro chroot (prostředí nového disku):</strong>
+   <code>bash
+   sudo mount --bind /dev /mnt/novy_raid/dev
+   sudo mount --bind /proc /mnt/novy_raid/proc
+   sudo mount --bind /sys /mnt/novy_raid/sys</code></li>
+<li><strong>Přepněte se do prostředí nového disku:</strong>
+   <code>bash
+   sudo chroot /mnt/novy_raid</code></li>
+<li><strong>Uložte konfiguraci RAIDu a aktualizujte zavaděč GRUB:</strong>
+   <code>bash
+   mdadm --detail --scan &gt;&gt; /etc/mdadm/mdadm.conf
+   update-initramfs -u
+   update-grub</code></li>
+<li><strong>Ukončete chroot:</strong>
+   <code>bash
+   exit</code></li>
+</ol>
+<h3>Krok 2.5: První restart do RAIDu</h3>
+<p>Restartuj počítač a v BIOSu základní desky vyber jako bootovací disk <strong>Micron</strong>. Po naběhnutí ověř funkčnost:</p>
+<pre><code class="language-bash">df -h /
+</code></pre>
+<p><em>(Měl bys vidět, že kořenový adresář běží z <code>/dev/md0</code>)</em></p>
+<h3>Krok 2.6: Přidání starého SanDisku do zrcadla</h3>
+<ol>
+<li><strong>Změňte typ oddílu na starém SanDisku na Linux RAID:</strong>
+   <code>bash
+   sudo sgdisk -t 2:fd00 /dev/sda</code></li>
+<li><strong>Přidejte oddíl do stávajícího RAID pole:</strong>
+   <code>bash
+   sudo mdadm --manage /dev/md0 --add /dev/sda2</code></li>
+<li><strong>Sledujte průběh synchronizace (zrcadlení) v reálném čase:</strong>
+   <code>bash
+   watch cat /proc/mdstat</code></li>
+</ol>
+<hr />
+<h2>🧰 3. Tipy pro další postup a užitečné nástroje</h2>
+<p>Po úspěšném zprovoznění zrcadla a ověření stability systému na novém hardwaru doporučuji doinstalovat tyto balíčky pro správu a údržbu:</p>
+<h3>Sledování zdraví a stavu RAID pole</h3>
+<ul>
+<li><strong><code>mdadm</code> monitorovací služba:</strong> Automaticky posílá upozornění, pokud jeden z disků v zrcadle selže.</li>
+<li><strong>Mailing systému:</strong> Pro nastavení upozornění na e-mail nainstaluj <code>bsd-mailx</code> nebo <code>postfix</code>.</li>
+<li><strong>Smartmontools:</strong> Nástroj pro sledování S.M.A.R.T. hodnot (zdraví a opotřebení obou SSD).
+  <code>bash
+  sudo apt install smartmontools</code></li>
+</ul>
+<h3>Diagnostika a přehled hardwaru v Kubuntu</h3>
+<ul>
+<li><strong>Kinfocenter:</strong> Nativní KDE aplikace, která ti v grafickém rozhraní ukáže podrobný přehled o novém procesoru, pamětech a grafice.</li>
+<li><strong>GSmartControl:</strong> Grafické rozhraní pro kontrolu zdraví disků.
+  <code>bash
+  sudo apt install gsmartcontrol</code></li>
+<li><strong>Btop / Htop:</strong> Moderní a přehledné terminálové správce úloh pro monitorování zátěže nového procesoru a RAM.
+  <code>bash
+  sudo apt install btop</code></li>
+</ul>
+<h3>Plánování upgradu systému</h3>
+<ul>
+<li>Jakmile systém poběží stabilně v zrcadle na novém hardwaru, můžeš bezpečně spustit upgrade z verze <strong>24.04 LTS</strong> na novější <strong>26.04 LTS s prostředím Plasma 6</strong>.</li>
+<li>Před samotným upgradem stačí zadat:
+  <code>bash
+  sudo do-release-upgrade -m desktop</code></li>
+</ul>
+<hr />
+<h2>🔗 4. Zdrojové reference</h2>
+<p>Při řešení problémů nebo hledání pokročilých parametrů konfigurace softwarového RAIDu v Linuxu se můžeš opřít o tyto oficiální zdroje:</p>
+<ul>
+<li><strong>Mdadm příručka (Ubuntu Manpages):</strong> <a href="https://://ubuntu.com/">://ubuntu.com - mdadm</a></li>
+<li><strong>Linux RAID Wiki:</strong> <a href="https://kernel.org">raid.wiki.kernel.org</a></li>
+<li><strong>Ubuntu Advanced Installation Guide:</strong> Oficiální dokumentace pro správu disků a polí mdadm.</li>
+<li><strong>GNU Coreutils (dd manual):</strong> Dokumentace k nástroji <code>dd</code> pro bezpečné nízkoúrovňové klonování disků.</li>
+</ul>
+
+<p style="margin-top: 2em;"><a href="../index.html">← Zpět na přehled</a></p>
+</body>
+</html>
