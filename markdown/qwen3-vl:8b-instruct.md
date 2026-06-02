@@ -583,53 +583,6 @@ Tento diagram znázorňuje hardwarové toky v Lenovo ThinkStation P720 uspořád
 
 ```mermaid
 graph TD
-    %% Definice globální třídy pro obří písmo uzlů (42px)
-    classDef obri_velikost font-size:42px,padding:20px;
-
-    %% Zvětšení textu na propojovacích šipkách (32px)
-    linkStyle default font-size:32px;
-
-    subgraph H_1 [<span style='font-size:42px;'>1. Výpočetní Jádro & RAM & GPU</span>]
-        Xeon[2x Intel Xeon Silver 4210 <br> 20 jader / 40 vláken]:::obri_velikost
-        RAM[64 GB DDR4 ECC RAM <br> Uzel NUMA 0 preferován]:::obri_velikost
-        GPU[NVIDIA Quadro P5000 <br> 16 GB GDDR5X VRAM]:::obri_velikost
-        Xeon --- RAM
-        Xeon --- GPU
-    end
-
-    subgraph H_2 [<span style='font-size:42px;'>2. Systémový Svazek</span>]
-        SYS_ZFS[2x 256 GB SSD <br> ZFS Mirror / RAID 1]:::obri_velikost --> OS_LOG[Operační systém Ubuntu 26.04 <br> & Systémové logy]:::obri_velikost
-    end
-
-    subgraph H_3 [<span style='font-size:42px;'>3. Aktivní AI Úložiště /mnt/ai-data</span>]
-        TLC[2TB M.2 NVMe PCIe 3.0 TLC <br> 1500 TBW <br><br> Obsahuje: <br> + Vektorová DB ChromaDB <br> + 32 GB Swap soubor <br> + Python venv & skripty]:::obri_velikost
-    end
-
-    subgraph H_4 [<span style='font-size:42px;'>4. Statická Knihovna /mnt/ai-models</span>]
-        QLC[2TB M.2 NVMe PCIe 4.0 QLC <br> Čtení: 4500 MB/s / 600 TBW <br><br> Obsahuje: <br> + Knihovna modelů <br> Qwen3-VL, LLaVA, Llama3, Whisper]:::obri_velikost
-    end
-
-    subgraph H_5 [<span style='font-size:42px;'>5. Zálohovací Úložiště /mnt/backup</span>]
-        HDD[1x 8TB 3,5 palců HDD <br> Cold Storage / Plotnový <br><br> Obsahuje: <br> + Denní zálohy dat a RAG indexů <br> + Týdenní zálohy AI modelů]:::obri_velikost
-    end
-
-    %% Vertikální toky mezi vrstvami
-    H_1 -->|Spouští a řídí OS| H_2
-    H_1 ===|Intenzivní zápisy databází| TLC
-    QLC ===|Ultra rychlé načítání do VRAM| GPU
-    TLC -.->|Denní přírůstkový rsync| H_5
-    QLC -.->|Týdenní kontrolní rsync| H_5
-```
-
-
-
-
-## 1. Hardwarová architektura a rozložení disků
-
-Tento diagram znázorňuje hardwarové toky v Lenovo ThinkStation P720 uspořádané logicky shora dolů podle rychlosti a účelu – od výpočetního jádra až po zálohovací úložiště.
-
-```mermaid
-graph TD
     %% Definice globální třídy pro obří písmo uzlů
     classDef obri font-size:24px;
 
