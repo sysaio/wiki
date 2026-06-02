@@ -579,11 +579,11 @@ Pro snadné pochopení celého ekosystému jsou níže vyobrazeny dva diagramy: 
 
 ## 1. Hardwarová architektura a rozložení disků
 
-Tento diagram ukazuje, jak jsou komponenty ThinkStation P720 zapojeny a jak striktně oddělujeme zápisové operace (TLC NVMe, Swap) od čtecích operací (QLC NVMe s modely) pro ochranu životnosti hardwaru a maximální propustnost.
+Tento diagram znázorňuje hardwarové toky v Lenovo ThinkStation P720 uspořádané logicky shora dolů podle rychlosti a účelu – od výpočetního jádra až po zálohovací úložiště.
 
 ```mermaid
 graph TD
-    %% Globální definice velikosti písma pro texty a propojení
+    %% Globální definice velikosti písma pro texty v blocích (2x větší)
     style Xeon font-size:24px
     style RAM font-size:24px
     style GPU font-size:24px
@@ -599,7 +599,7 @@ graph TD
     style B_DATA font-size:24px
     style B_MOD font-size:24px
 
-    subgraph CPU_RAM [Základní deska & Procesory]
+    subgraph H_1 [1. Výpočetní Jádro & RAM & GPU]
         Xeon[2x Intel Xeon Silver 4210 <br> 20 jader / 40 vláken]
         RAM[64 GB DDR4 ECC RAM <br> Uzel NUMA 0 preferován]
         GPU[NVIDIA Quadro P5000 <br> 16 GB GDDR5X VRAM]
@@ -607,13 +607,11 @@ graph TD
         Xeon --- GPU
     end
 
-    subgraph OS_POOL [Systémový Svazek]
-        SYS_ZFS[2x 256 GB SSD <br> Zapojení: ZFS Mirror / RAID 1]
-        OS_LOG[Operační systém Ubuntu 26.04 <br> & Systémové logy]
-        SYS_ZFS --> OS_LOG
+    subgraph H_2 [2. Systémový Svazek]
+        SYS_ZFS[2x 256 GB SSD <br> Zapojení: ZFS Mirror / RAID 1] --> OS_LOG[Operační systém Ubuntu 26.04 <br> & Systémové logy]
     end
 
-    subgraph NVME_TLC [Aktivní AI Úložiště /mnt/ai-data]
+    subgraph H_3 [3. Aktivní AI Úložiště /mnt/ai-data]
         TLC[2TB M.2 NVMe PCIe 3.0 TLC <br> Životnost: 1500 TBW]
         VDB[Vektorová DB ChromaDB <br> /vector-db]
         SWAP[32 GB Swap soubor <br> vm.swappiness = 10]
@@ -623,13 +621,11 @@ graph TD
         TLC --> VENV
     end
 
-    subgraph NVME_QLC [Statická Knihovna /mnt/ai-models]
-        QLC[2TB M.2 NVMe PCIe 4.0 QLC <br> Rychlost čtení: 4500 MB/s]
-        MODELS[Knihovna AI Modelů <br> Qwen3-VL, LLaVA, Llama3, Whisper]
-        QLC --> MODELS
+    subgraph H_4 [4. Statická Knihovna /mnt/ai-models]
+        QLC[2TB M.2 NVMe PCIe 4.0 QLC <br> Rychlost čtení: 4500 MB/s] --> MODELS[Knihovna AI Modelů <br> Qwen3-VL, LLaVA, Llama3, Whisper]
     end
 
-    subgraph BACKUP_POOL [Zálohovací Úložiště /mnt/backup]
+    subgraph H_5 [5. Zálohovací Úložiště /mnt/backup]
         HDD[1x 8TB 3,5 palců HDD <br> Cold Storage / Plotnový]
         B_DATA[Denní záloha dat a RAG indexů]
         B_MOD[Týdenní záloha modelů]
@@ -637,13 +633,14 @@ graph TD
         HDD --> B_MOD
     end
 
-    %% Propojení toků dat
-    Xeon -.-> OS_POOL
-    Xeon === NVME_TLC
-    MODELS === GPU
-    NVME_TLC -.-> B_DATA
-    NVME_QLC -.-> B_MOD
+    %% Vertikální toky mezi vrstvami
+    H_1 -->|Spouští a řídí| H_2
+    H_1 ===|Intenzivní zápisy/čtení DB| H_3
+    MODELS ===|Ultra rychlé načítání do VRAM| GPU
+    H_3 -.->|Denní přírůstkový rsync| B_DATA
+    H_4 -.->|Týdenní kontrolní rsync| B_MOD
 ```
+
 
 ### Popis hardwarového schématu:
 * **NUMA a RAM:** Náročné výpočty jsou uzamčeny na první procesor (Uzel 0), což zajišťuje nejkratší možnou trasu dat do RAM a VRAM grafické karty bez zpoždění na vnitřní sběrnici.
