@@ -583,21 +583,12 @@ Tento diagram znázorňuje hardwarové toky v Lenovo ThinkStation P720 uspořád
 
 ```mermaid
 graph TD
-    %% Globální definice velikosti písma pro texty v blocích (2x větší)
-    style Xeon font-size:24px
-    style RAM font-size:24px
-    style GPU font-size:24px
-    style SYS_ZFS font-size:24px
-    style OS_LOG font-size:24px
-    style TLC font-size:24px
-    style VDB font-size:24px
-    style SWAP font-size:24px
-    style VENV font-size:24px
-    style QLC font-size:24px
-    style MODELS font-size:24px
-    style HDD font-size:24px
-    style B_DATA font-size:24px
-    style B_MOD font-size:24px
+    %% Definice globální třídy pro obří písmo (24px) a její aplikace na všechny uzly
+    classDef obri font-size:24px;
+    class Xeon,RAM,GPU,SYS_ZFS,OS_LOG,TLC,VDB,SWAP,VENV,QLC,MODELS,HDD,B_DATA,B_MOD obri;
+
+    %% Zvětšení textu na propojovacích šipkách
+    linkStyle default font-size:20px;
 
     subgraph H_1 [1. Výpočetní Jádro & RAM & GPU]
         Xeon[2x Intel Xeon Silver 4210 <br> 20 jader / 40 vláken]
@@ -635,12 +626,11 @@ graph TD
 
     %% Vertikální toky mezi vrstvami
     H_1 -->|Spouští a řídí| H_2
-    H_1 ===|Intenzivní zápisy/čtení DB| H_3
+    H_1 ===|Intenzivní zápisy a čtení DB| H_3
     MODELS ===|Ultra rychlé načítání do VRAM| GPU
     H_3 -.->|Denní přírůstkový rsync| B_DATA
     H_4 -.->|Týdenní kontrolní rsync| B_MOD
 ```
-
 
 ### Popis hardwarového schématu:
 * **NUMA a RAM:** Náročné výpočty jsou uzamčeny na první procesor (Uzel 0), což zajišťuje nejkratší možnou trasu dat do RAM a VRAM grafické karty bez zpoždění na vnitřní sběrnici.
