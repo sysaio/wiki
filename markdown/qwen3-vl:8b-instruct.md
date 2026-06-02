@@ -573,7 +573,7 @@ Aktivujte virtuální prostředí a spusťte vyhledávání:
 
 # 🗺️ Architektonické diagramy lokální AI stanice
 
-Pro snadné pochopení celého ekosystému jsou níže vyobrazeny dva diagramy: hardwarové rozložení (asymetrická topologie disků a NUMA) a softwarový tok dat při vytěžování a vyhledávání v archivu.
+Pro snadné pochopení celého ekosystému jsou níže vyobrazeny dva diagramy: hardwarové rozložení (asymetrická topologie disků a NUMA) a softwarový tok dat při vytěžování a vyhledávání v archivu. Všechny texty v diagramech byly zvětšeny na dvojnásobek pro maximální čitelnost.
 
 ---
 
@@ -583,6 +583,22 @@ Tento diagram ukazuje, jak jsou komponenty ThinkStation P720 zapojeny a jak stri
 
 ```mermaid
 graph TD
+    %% Globální definice velikosti písma pro texty a propojení
+    style Xeon font-size:24px
+    style RAM font-size:24px
+    style GPU font-size:24px
+    style SYS_ZFS font-size:24px
+    style OS_LOG font-size:24px
+    style TLC font-size:24px
+    style VDB font-size:24px
+    style SWAP font-size:24px
+    style VENV font-size:24px
+    style QLC font-size:24px
+    style MODELS font-size:24px
+    style HDD font-size:24px
+    style B_DATA font-size:24px
+    style B_MOD font-size:24px
+
     subgraph CPU_RAM [Základní deska & Procesory]
         Xeon[2x Intel Xeon Silver 4210 <br> 20 jader / 40 vláken]
         RAM[64 GB DDR4 ECC RAM <br> Uzel NUMA 0 preferován]
@@ -622,47 +638,59 @@ graph TD
     end
 
     %% Propojení toků dat
-    Xeon -.->|1. Spouští OS| OS_POOL
-    Xeon ===|2. Intenzivní zápisy/čtení DB| NVME_TLC
-    MODELS ===|3. Ultra rychlé načítání: 4500MB/s| GPU
-    NVME_TLC -.->|4. Denní přírůstkový rsync| B_DATA
-    NVME_QLC -.->|5. Týdenní kontrolní rsync| B_MOD
+    Xeon -.-> OS_POOL
+    Xeon === NVME_TLC
+    MODELS === GPU
+    NVME_TLC -.-> B_DATA
+    NVME_QLC -.-> B_MOD
 ```
 
 ### Popis hardwarového schématu:
 * **NUMA a RAM:** Náročné výpočty jsou uzamčeny na první procesor (Uzel 0), což zajišťuje nejkratší možnou trasu dat do RAM a VRAM grafické karty bez zpoždění na vnitřní sběrnici.
-* **Separace TLC vs QLC:** Databáze a 32GB odkládací paměť (Swap) neustále zapisují data. Jsou proto umístěny na odolnějším TLC disku (1500 TBW). Obrovské soubory modelů jsou uloženy na bleskovém QLC disku (čtení 4500 MB/s), odkud se při startu AI bleskově jednorázově načtou do 16 GB VRAM grafické karty, čímž se QLC disk opotřebovává minimálně.
+* **Separace TLC vs QLC:** Databáze a 32GB odkládací paměti (Swap) neustále zapisují data. Jsou proto umístěny na odolnějším TLC disku (1500 TBW). Obrovské soubory modelů jsou uloženy na bleskovém QLC disku (čtení 4500 MB/s), odkud se při startu AI bleskově jednorázově načtou do 16 GB VRAM grafické karty, čímž se QLC disk opotřebovává minimálně.
 
 ---
 
 ## 2. Softwarový tok dat (Pipeline)
 
-Tento diagram znázorňuje životní cyklus dokumentu – od surového historického skenu z 90. let, přes multimodální analýzu, až po sémantické vyhledávání v lokálním RAG systému.
+Tento diagram znázorňuje životní cyklus dokumentu řazený přehledně pod sebou (vertikálně) – od surového historického skenu z 90. let, přes multimodální analýzu, až po sémantické vyhledávání v lokálním RAG systému.
 
 ```mermaid
-graph LR
-    subgraph KROK_A [1. Fáze: Multimodální Vytěžování]
+graph TD
+    %% Globální definice velikosti písma pro texty v blocích
+    style Sken font-size:24px
+    style Qwen font-size:24px
+    style JSON font-size:24px
+    style Split font-size:24px
+    style Embed font-size:24px
+    style Chroma font-size:24px
+    style User font-size:24px
+    style QueryEmbed font-size:24px
+    style Results font-size:24px
+
+    subgraph F_1 [1. Fáze: Multimodální Vytěžování]
         Sken[Surový sken z 90. let <br> Schéma / Log v JPG] -->|batch_analyze.py| Qwen[Model Qwen3-VL <br> Analýza obrazu na GPU]
         Qwen -->|Extrakce textu a dat| JSON[vytěžena_data_archivu.json <br> Strukturovaný textový výstup]
     end
 
-    subgraph KROK_B [2. Fáze: Lokální Indexace]
+    subgraph F_2 [2. Fáze: Lokální Indexace]
         JSON -->|rag_archive.py| Split[LangChain Splitter <br> Rozsekání textu na 500zn. bloky]
         Split -->|Sentence-Transformers| Embed[Lokální Embedding Model <br> Převod textu na matematické vektory]
         Embed -->|Uložení na TLC disk| Chroma[ChromaDB <br> Vektorová databáze offline]
     end
 
-    subgraph KROK_C [3. Fáze: Sémantické Vyhledávání]
-        User[Uživatel: Dotaz v češtině] -->|Hledám chybu relé z r. 1995| QueryEmbed[Převod dotazu na vektor]
-        QueryEmbed -->|Matematické porovnání shody| Chroma
-        Chroma -->|Výpis top výsledků| Results[Zobrazení textu + Cesty k originálnímu souboru]
+    subgraph F_3 [3. Fáze: Sémantické Vyhledávání]
+        Chroma --- User[Uživatel: Dotaz v češtině]
+        User -->|Hledám chybu relé z r. 1995| QueryEmbed[Převod dotazu na vektor]
+        QueryEmbed -->|Matematické porovnání shody v databázi| Results[Zobrazení textu + Cesty k originálnímu souboru]
     end
 ```
 
 ### Popis softwarového schématu:
 * **Vytěžování:** Multimodální model Qwen3-VL funguje jako digitální archeolog. Přijme obrázek, „přečte“ technické detaily a vyplivne čistý textový soubor JSON.
-* **Indexace a RAG:** Text se rozseká na menší odstavce, aby vyhledávání bylo přesné. Embedding model přeloží lidská slova do řeči čísel (vektorů). ChromaDB tyto vektory trvale uloží.
+* **Indexace a RAG:** Text se rozseká na menší odstavce, aby vyhledávání bylo přesné. Embedding model přeloží lidská slova do řeči čísel (vektorovů). ChromaDB tyto vektory trvale uloží.
 * **Sémantika:** Když se uživatel zeptá na nějaký problém, systém nehledá přesnou shodu písmen, ale shodu významu (kontextu) a okamžitě mu ukáže, ve kterém souboru na disku se daná informace nachází.
+
 
 
 ---
