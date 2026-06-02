@@ -13,102 +13,651 @@
   </style>
 </head>
 <body>
-<h1>🚀 Návod: Instalace a spuštění Qwen3-VL-8B-Instruct na lokálním serveru (Lenovo ThinkStation P720)</h1>
-<h2>📌 Úvod</h2>
-<p>Tento návod vás provede instalací a spuštěním <strong>Qwen3-VL-8B-Instruct</strong> – multimodálního (text + obrázek) modelu od Alibaba Cloud – na vašem <strong>Lenovo ThinkStation P720</strong>. Využijete jeho výkonnou infrastrukturu (2x Xeon Silver 4210, 64GB RAM, Quadro P5000) pro lokální AI pracovní prostředí bez internetu, vhodné pro práci se citlivými daty (např. 30letý internerý archiv).</p>
-<h2>⚙️ Požadavky</h2>
+<h1>🏠 Průvodce instalací lokálního AI prostředí na Lenovo ThinkStation P720</h1>
+<p>Vítejte v dokumentaci pro nasazení open-source umělé inteligence na vlastním hardwaru. Tento návod slouží jako kompletní, krok za krokem přehled a konfigurační kuchařka pro GitHub Pages. Všechny popsané modely a postupy jsou navrženy pro plně offline provoz, bez odesílání dat na internet a bez licenčních poplatků. Cílem je bezpečná analýza interních dokumentů, historických schémat a 30letého firemního archivu.</p>
+<hr />
+<h2>🖥️ Hardwarová a softwarová specifikace</h2>
+<h3>Hardware</h3>
 <ul>
-<li><strong>OS:</strong> Ubuntu 26.04 LTS</li>
-<li><strong>Hardware:</strong></li>
-<li>64 GB DDR4 ECC RAM</li>
-<li>NVIDIA Quadro P5000 (16 GB GDDR5X VRAM)</li>
-<li>2x 2TB NVMe SSD (RAID 1)</li>
-<li><strong>Software:</strong></li>
-<li>Python 3.10+</li>
-<li>NVIDIA drivers (zpracování přes CUDA)</li>
-<li>CUDA toolkit 11.8+ (kompatibilní s Pascal architekturou)</li>
-<li>Git, pip, wget, curl, vim, docker (volitelně)</li>
+<li><strong>Stroj:</strong> Lenovo ThinkStation P720 Tower Workstation</li>
+<li><strong>Procesor:</strong> 2x Intel Xeon Silver 4210 (Celkem 20 fyzických jader, 40 vláken, NUMA topologie)</li>
+<li><strong>Operační paměť:</strong> 64 GB DDR4 ECC RAM</li>
+<li><strong>Grafická karta:</strong> NVIDIA Quadro P5000 (16 GB GDDR5X VRAM, architektura Pascal)</li>
+<li><strong>Úložiště (Asymetrická AI Topologie):</strong></li>
+<li><strong>Systémové disky:</strong> 2x 256 GB SSD v zapojení ZFS Mirror (RAID 1) – vyhrazeno pro OS a systémové logy.</li>
+<li><strong>NVMe Disk 1 (Aktivní Data a RAG):</strong> 2TB M.2 PCIe 3.0 TLC (3100/2200 MB/s, vysoká životnost 1500 TBW) – dedikovaný pro neustálé zápisy vektorových databází, indexy a python prostředí. Namontován na <code>/mnt/ai-data</code>.</li>
+<li><strong>NVMe Disk 2 (Úložiště LLM Modelů):</strong> 2TB M.2 PCIe 4.0 QLC (4500/4000 MB/s, rychlé čtení, 600 TBW) – dedikovaný pro statické ukládání LLM/GGUF modelů. Využívá maximální rychlost čtení pro okamžité načítání modelů do VRAM. Namontován na <code>/mnt/ai-models</code>.</li>
+<li><strong>Zálohovací disk:</strong> 1x 8TB 3,5" HDD (plotnový) – určen pro denní inkrementální zálohy a cold-storage obou NVMe disků.</li>
 </ul>
-<h2>📥 1. Nainstalujte požadované závislosti</h2>
-<p>Otevřete terminál a spusťte:</p>
-<p>sudo apt update &amp;&amp; sudo apt upgrade -y
-sudo apt install -y git wget curl vim build-essential libgl1 libglib2.0-0 libsm6 libxext6 libxrender-dev libxinerama-dev libxi6
+<h3>Software</h3>
+<ul>
+<li><strong>Operační systém:</strong> Ubuntu 26.04 LTS (Noble Numbat – jádro s nativní podporou NUMA a symetrického multiprocessingu)</li>
+<li><strong>Základy:</strong> Python 3.10+, Git, pip, wget, curl, vim, docker (volitelně)</li>
+</ul>
+<hr />
+<h1>💾 Konfigurace odkládací paměti (Swap) pro AI Workstation</h1>
+<p>Při provozu lokálních AI modelů a indexaci velkých datových objemů (30letý archiv) je swap naprosto kritickou pojistkou stability. Pokud paměťové nároky přesáhnou fyzických 64 GB RAM, swap zabrání pádu běžících AI procesů (chyba Out of Memory). </p>
+<p>Díky kombinaci 64 GB fyzické RAM a 32 GB Swapu získá systém celkem 96 GB alokovatelného prostoru.</p>
+<hr />
+<h2>🎯 Strategie umístění Swapu</h2>
+<p>Z hlediska asymetrické hardwarové topologie serveru Lenovo P720 je swap nakonfigurován následovně:</p>
+<ul>
+<li><strong>Umístění:</strong> Výhradně na PCIe 3.0 TLC disku (/mnt/ai-data).</li>
+<li><strong>Důvod:</strong> Swap generuje obrovské množství drobných a neustálých zápisů. Druhý PCIe 4.0 QLC disk (/mnt/ai-models) má nízkou životnost (pouze 600 TBW) a swap by ho velmi rychle zničil. TLC disk s životností 1500 TBW je pro tuto zátěž ideální. Provoz swapu na systémovém ZFS mirroru se nedoporučuje kvůli riziku zacyklení paměti (deadlock).</li>
+</ul>
+<hr />
+<h2>⚙️ Krok za krokem: Vytvoření 32 GB Swap souboru</h2>
+<p>V moderním Ubuntu 26.04 LTS je nejefektivnějším řešením vytvoření swap souboru přímo na datovém TLC svazku. Postupujte podle těchto příkazů v terminálu:</p>
+<pre><code># 1. Alokujte 32 GB prostor pro swap soubor na rychlém TLC disku
+sudo fallocate -l 32G /mnt/ai-data/swapfile
+
+# 2. Nastavte striktní přístupová práva (bezpečnostní standard)
+sudo chmod 600 /mnt/ai-data/swapfile
+
+# 3. Zformátujte soubor jako swap prostor
+sudo mkswap /mnt/ai-data/swapfile
+
+# 4. Aktivujte swap v aktuální relaci systému
+sudo swapon /mnt/ai-data/swapfile
+
+# 5. Ověřte úspěšnou aktivaci (v tabulce uvidíte nový 32GB řádek Swap)
+free -m
+</code></pre>
+<hr />
+<h2>🔄 Trvalé připojení po restartu (fstab)</h2>
+<p>Aby se odkládací paměť automaticky aktivovala při každém startu pracovní stanice, přidejte konfiguraci do systémového fstab.</p>
+<p>Otevřete soubor fstab v editoru:</p>
+<pre><code>sudo vim /etc/fstab
+</code></pre>
+<p>Vložte na samotný konec souboru tento nový řádek a uložte jej:</p>
+<pre><code>/mnt/ai-data/swapfile none swap sw 0 0
+</code></pre>
+<hr />
+<h2>💡 AI Optimalizace: Nastavení hodnoty Swappiness</h2>
+<p>Výchozí hodnota swappiness v Ubuntu je 60, což znamená, že systém odkládá data na disk poměrně brzy. Pro AI výpočty chceme, aby operační systém maximálně využíval bleskovou fyzickou 64 GB RAM a do swapu sahal až v situaci absolutní nouze. </p>
+<p>Proto snižujeme hodnotu swappiness na <strong>10</strong>.</p>
+<p>Dočasně změňte hodnotu v aktuálním běhu systému:</p>
+<pre><code>sudo sysctl vm.swappiness=10
+</code></pre>
+<p>Pro trvalé uložení této optimalizace otevřete konfigurační soubor:</p>
+<pre><code>sudo vim /etc/sysctl.conf
+</code></pre>
+<p>Přejděte na konec souboru, vložte následující řádek, uložte a zavřete editor:</p>
+<pre><code>vm.swappiness=10
+</code></pre>
+<h2>🧠 Přehled vhodných Open-Source modelů</h2>
+<p>Následující modely jsou optimalizovány pro běh v rámci limitů vaší hardwarové konfigurace a 16 GB VRAM karty Quadro P5000.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Model</th>
+<th style="text-align: left;">Typ</th>
+<th style="text-align: left;">Velikost / Nárok na VRAM</th>
+<th style="text-align: left;">Hlavní využití a doporučení</th>
+<th style="text-align: left;">Rychlé spuštění (Ollama)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Qwen3-VL 8B</td>
+<td style="text-align: left;">Multimodální (Text + Obrázek)</td>
+<td style="text-align: left;">cca 5–7 GB / 8 GB VRAM</td>
+<td style="text-align: left;">Popis schémat, nákresů a logů z 90. let. Výtahy z dokumentů a lokální fine-tuning.</td>
+<td style="text-align: left;">ollama run qwen3-vl</td>
+</tr>
+<tr>
+<td style="text-align: left;">LLaVA 7B</td>
+<td style="text-align: left;">Multimodální (Text + Obrázek)</td>
+<td style="text-align: left;">cca 6–7 GB / 8 GB VRAM</td>
+<td style="text-align: left;">Výborná akcelerace na GPU. Popis nákresů, čtení skenovaných PDF a základ pro RAG.</td>
+<td style="text-align: left;">ollama run llava:7b</td>
+</tr>
+<tr>
+<td style="text-align: left;">Llama 3 8B (Instruct)</td>
+<td style="text-align: left;">Textový LLM</td>
+<td style="text-align: left;">cca 4.7 GB / 5 GB VRAM</td>
+<td style="text-align: left;">Analýza smluv, e-mailů, běžný firemní chat a generování sumářů textů.</td>
+<td style="text-align: left;">ollama run llama3:8b</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mistral 7B (Instruct)</td>
+<td style="text-align: left;">Textový LLM</td>
+<td style="text-align: left;">cca 4.1 GB / 5 GB VRAM</td>
+<td style="text-align: left;">Rychlé odpovědi, generování programovacího kódu, skriptování a logické úlohy.</td>
+<td style="text-align: left;">ollama run mistral:7b</td>
+</tr>
+<tr>
+<td style="text-align: left;">Whisper (Large-v3)</td>
+<td style="text-align: left;">Audio -&gt; Text</td>
+<td style="text-align: left;">cca 10 GB / 10 GB VRAM</td>
+<td style="text-align: left;">Automatický přesný přepis starých audiologů, schůzek a diktátů do češtiny.</td>
+<td style="text-align: left;">Nativní Python setup</td>
+</tr>
+<tr>
+<td style="text-align: left;">RAG Systém</td>
+<td style="text-align: left;">LLM + Vektorová DB</td>
+<td style="text-align: left;">Využívá 40 CPU vláken + 64 GB RAM</td>
+<td style="text-align: left;">Prohledávání napříč celým 30letým archivem. Nejvýkonnější lokální řešení.</td>
+<td style="text-align: left;">Architektonický celek</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>⚙️ Krok za krokem: Instalace a konfigurace prostředí</h2>
+<h3>Krok 1: Příprava ovladačů GPU (NVIDIA CUDA)</h3>
+<p>Pro plné využití 16 GB VRAM karty Quadro P5000 pro AI výpočty nainstalujeme produkční ovladače a CUDA toolkit přímo z oficiálních repozitářů.</p>
+<pre><code>sudo apt update
+sudo apt install -y nvidia-driver-550 nvidia-utils-550 cuda-toolkit-12-4
+nvidia-smi
+</code></pre>
+<h3>Krok 2: Příprava systému a systémových závislostí</h3>
+<p>Nainstalujeme potřebné systémové knihovny pro práci s grafikou, kompilaci kódů a Pythonem.</p>
+<pre><code>sudo apt install -y git wget curl vim build-essential libgl1 libglib2.0-0 libsm6 libxext6 libxrender-dev libxinerama-dev libxi6
 sudo apt install -y python3.10 python3.10-venv python3.10-pip
-python3.10 -m venv ~/qwen3-venv
-source ~/qwen3-venv/bin/activate
+</code></pre>
+<h3>Krok 3: Konfigurace asymetrických NVMe úložisť</h3>
+<p>Vytvoříme body připojení. Vysoce odolný TLC disk namontujeme pro databáze a běžné zápisy, zatímco ultra rychlý QQLC disk vyhradíme čistě pro statické soubory modelů.</p>
+<pre><code># Příprava adresářů a přidělení práv aktuálnímu uživateli
+sudo mkdir -p /mnt/ai-data
+sudo mkdir -p /mnt/ai-models
+sudo chown -R $USER:$USER /mnt/ai-data /mnt/ai-models
+
+# Poznámka: Zde připojte PCIe 3.0 TLC disk do /mnt/ai-data a PCIe 4.0 QLC disk do /mnt/ai-models přes /etc/fstab
+</code></pre>
+<h3>Krok 4: Vytvoření virtuálního prostředí a instalace PyTorch</h3>
+<p>Pro virtuální prostředí a kód aplikací využijeme vysoce odolný TLC disk (<code>/mnt/ai-data</code>), abychom šetřili životnost druhého QLC disku.</p>
+<pre><code>python3.10 -m venv /mnt/ai-data/local-ai-venv
+source /mnt/ai-data/local-ai-venv/bin/activate
 python3.10 -m pip install --upgrade pip
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-pip install transformers accelerate bitsandbytes sentencepiece accelerate
-pip install -U peft safetensors</p>
-<blockquote>
-<p>⚠️ Pokud máte GPU, <strong>nainstalujte PyTorch s CUDA 11.8</strong> → to je největší výhoda pro běh na Quadro P5000.</p>
-</blockquote>
-<h2>🎨 2. Stáhněte Qwen3-VL-8B-Instruct</h2>
-<p>mkdir -p ~/qwen3-models
-cd ~/qwen3-models
-wget https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct/resolve/main/Qwen3-VL-8B-Instruct.safetensors</p>
-<blockquote>
-<p>✅ Pokud se rozhodnete používat <strong>GGUF verzi</strong> → zde je návod pro Ollama (použitelný i v Dockeru):<br />
-<a href="https://ollama.com/library/qwen3-vl">Ollama Qwen3-VL GGUF</a></p>
-</blockquote>
-<h2>🐳 3. (Volitelně) Spuštění v Dockeru</h2>
-<p>sudo apt install docker.io docker-compose
+pip install torch torchvision torchaudio --index-url https://pytorch.org
+pip install transformers accelerate bitsandbytes sentencepiece peft safetensors trl datasets evaluate
+</code></pre>
+<h3>Krok 5: Správa modelů přes Ollama (Konfigurace na rychlé čtení)</h3>
+<p>Nástroj Ollama nainstalujeme standardně, ale pomocí systémové proměnné jí přikážeme stahovat a číst modely z ultra rychlého PCIe 4.0 QLC disku (<code>/mnt/ai-models</code>). Modely se tak do grafické karty načtou v maximální rychlosti.</p>
+<pre><code>curl -fsSL https://ollama.com | sh
+sudo mkdir -p /etc/systemd/system/ollama.service.d
+echo '[Service]' | sudo tee /etc/systemd/system/ollama.service.d/override.conf
+echo 'Environment="OLLAMA_MODELS=/mnt/ai-models"' | sudo tee -a /etc/systemd/system/ollama.service.d/override.conf
+sudo systemctl daemon-reload
+sudo systemctl restart ollama
+ollama pull qwen3-vl
+ollama run qwen3-vl
+</code></pre>
+<h3>Krok 6: Alternativní spuštění v Dockeru</h3>
+<p>Pokud preferujete kontejnerizaci, Docker nastavíme tak, aby kontejner běžel na TLC disku, ale modely četl z rychlého QLC disku.</p>
+<pre><code>sudo apt install docker.io docker-compose -y
 sudo usermod -aG docker $USER
 newgrp docker
-docker pull ollama/ollama:latest
-docker run -d --name ollama -p 11434:11434 -v /home/ubuntu/qwen3-models:/root/.ollama/models --gpus=all ollama/ollama</p>
-<blockquote>
-<p>Výhody: snadná instalace, bez potřeby nakonfigurovat vlastní prostředí.</p>
-</blockquote>
-<h2>🧠 4. (Volitelně) Finetuning vašich dat</h2>
-<p>pip install trl peft datasets evaluate accelerate
-export HF_HOME=/home/ubuntu/.cache/huggingface
-python -m trl.scripts.finetune_qwen3 --model_name_or_path Qwen/Qwen3-VL-8B-Instruct --dataset_path your_data.json --output_dir ./fine_tuned_qwen3_vl --per_device_train_batch_size 2 --gradient_accumulation_steps 4 --learning_rate 2e-5 --num_train_epochs 3 --fp16</p>
-<blockquote>
-<p>⚠️ Pro finetuning se vám bude vyžadovat <strong>minimálně 12 GB RAM + 8 GB VRAM</strong> – vaše 16 GB VRAM je v pořádku.</p>
-</blockquote>
-<h2>💬 5. Spuštění modelu v Pythonu</h2>
-<p>Vytvořte skript <code>run_qwen3_vl.py</code>:</p>
-<p>```python
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from transformers import AutoProcessor, AutoModelForVision2Seq
-import torch
-from PIL import Image</p>
-<p>model_name = "Qwen/Qwen3-VL-8B-Instruct"
+docker run -d --name ollama -p 11434:11434 -v /mnt/ai-models:/root/.ollama/models --gpus=all ollama/ollama
+</code></pre>
+<h3>Krok 7: Skript pro nativní spuštění Qwen3-VL v Pythonu</h3>
+<p>Chcete-li model integrovat do vlastních aplikací, uložte skript na TLC disk do souboru <code>/mnt/ai-data/run_qwen3_vl.py</code>.</p>
+<pre><code>import torch
+from PIL import Image
+from transformers import AutoTokenizer, AutoProcessor, AutoModelForVision2Seq
+
+model_name = "Qwen/Qwen3-VL-8B-Instruct"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForVision2Seq.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")</p>
-<p>prompt = "Popiš tento obrázek."
-image = Image.open("your_image.jpg")
 processor = AutoProcessor.from_pretrained(model_name)
+model = AutoModelForVision2Seq.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
+
+prompt = "Popis podrobne toto historicke schema a vypis z nej textove logy."
+image = Image.open("historicky_log_1995.jpg")
+
 inputs = processor(images=image, text=prompt, return_tensors="pt").to("cuda")
-outputs = model.generate(**inputs, max_new_tokens=128)
-print(tokenizer.decode(outputs[0], skip_special_tokens=True))</p>
-<h2>📦 6. Spuštění přes Ollama</h2>
-<p>curl -fsSL https://ollama.com/install.sh | sh
-ollama pull qwen3-vl
-ollama run qwen3-vl</p>
-<p>Výhody: jednoduché, kompatibilní s více modely, výborně se hodí pro prototypování.</p>
-<p>✅ Shrnutí
-Vaše Lenovo ThinkStation P720 je úplně vhodné pro:</p>
-<p>Lokální běh Qwen3-VL-8B-Instruct
-Chatování, překlady, vyhledávání obrázků, finetuning na vašich 30letých datech
-Základní modely: využijte GPU Quadro P5000, RAM 64 GB a SSD</p>
-<p>📚 Zdroje
-Qwen3-VL-8B-Instruct: https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct
-PyTorch + CUDA setup: https://pytorch.org/get-started/locally/
-Ollama dokumentace: https://ollama.com/docs
-Finetuning s trl: https://huggingface.co/docs/trl
-GitHub Wiki: https://github.com/yourorg/your-repo/wiki
-📎 Citace (Harvard style)
-Alibabas Cloud. (2025). Qwen3-VL-8B-Instruct. Hugging Face. https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct
-Hugging Face. (2024). Transformers documentation. https://huggingface.co/docs/transformers
-PyTorch Team. (2024). PyTorch with CUDA. https://pytorch.org/get-started/locally/
-Ollama. (2025). Ollama: run models locally. https://ollama.com
-Hugging Face. (2024). Trainer and Finetuning Guide. https://huggingface.co/docs/trl</p>
-<p>Začínáme s AI? Nebo už jste už tady?
-Váš nápad na lokální AI je správný a významný krok – a já jsem zde, abych vám pomohl pokročit.
-💡 Nejde jen o modely, ale o významnou práci s daty, která zůstává u vás.</p>
-<p>Díky za důvěru! 🚀🤖</p>
+outputs = model.generate(**inputs, max_new_tokens=256)
+print(tokenizer.decode(outputs, skip_special_tokens=True))
+</code></pre>
+<h3>Krok 8: Spuštění přepisu audia pomocí Whisper (Large-v3)</h3>
+<p>Whisper kód zprovozníme na TLC disku, přičemž mezipaměť pro stažený 10 GB model nasměrujeme na QLC disk <code>/mnt/ai-models</code>.</p>
+<pre><code>cd /mnt/ai-data
+git clone https://github.com
+cd whisper
+pip install -e .
+
+# Spuštění s modelem na rychlém disku
+python3 examples/translate.py --model large-v3 --output_dir /mnt/ai-data/vystup_texty --input stare_hlasove_zaznamy.wav
+</code></pre>
+<h3>Krok 9: Pokročilé lokální dotrénování (Fine-Tuning)</h3>
+<p>Data i skripty pro fine-tuning držíme na TLC disku. Hugging Face cache (kam se stahují surové nekvantizované váhy před trénováním) nasměrujeme na QLC disk.</p>
+<pre><code>export HF_HOME=/mnt/ai-models/.cache/huggingface
+python -m trl.scripts.finetune_qwen3 \
+    --model_name_or_path Qwen/Qwen3-VL-8B-Instruct \
+    --dataset_path /mnt/ai-data/archivni_data_set.json \
+    --output_dir /mnt/ai-data/vyladeny_qwen3_model \
+    --per_device_train_batch_size 2 \
+    --gradient_accumulation_steps 4 \
+    --learning_rate 2e-5 \
+    --num_train_epochs 3 \
+    --fp16
+</code></pre>
+<blockquote>
+<p>Poznámka k paměti: Tento proces vyžaduje minimálně 12 GB systémové RAM a 8 GB VRAM. Vaše konfigurace (64 GB RAM / 16 GB VRAM) je pro tento úkol plně dostačující.</p>
+</blockquote>
+<hr />
+<h2>💡 Tipy, triky a optimalizace výkonu pro P720</h2>
+<ol>
+<li>
+<p><strong>NUMA Architektura (Non-Uniform Memory Access):</strong> Pracovní stanice ThinkStation P720 obsahuje 2 fyzické procesory Xeon. Systémová RAM je rozdělena mezi ně. Chcete-li zabránit zpomalení při přenosu dat mezi procesory (NUMA cross-talk), spouštějte náročné python skripty nebo indexaci vektorové databáze svázané s konkrétním CPU uzlem pomocí nástroje numactl:</p>
+<p>sudo apt install numactl
+numactl --cpunodebind=0 --membind=0 python /mnt/ai-data/run_qwen3_vl.py</p>
+</li>
+<li>
+<p><strong>Ochrana QLC disku před opotřebením:</strong> Disky s buňkami QLC mají výrazně nižší limit celkového zapsaného množství dat (600 TBW proti 1500 TBW u TLC). Proto na disk <code>/mnt/ai-models</code> nikdy nesměrujte databázové logy, swap, ani dynamické indexy. Využívejte ho výhradně jako "knihovnu" na čtení AI modelů.</p>
+</li>
+<li>
+<p><strong>Kvantizace modelů (GGUF/AWQ):</strong> Karta Quadro P5000 má 16 GB VRAM. 8B modely v plné přesnosti (FP16) zabírají cca 16 GB a vysoce vytěžují paměť. Spouštění přes Ollama automaticky využívá 4bitovou kvantizaci (GGUF), což snižuje nároky na cca 5 GB VRAM. To vám dává obrovskou výkonnostní rezervu pro kontextové okno a zpracování velkých obrázků.</p>
+</li>
+<li>
+<p><strong>Strategie zálohování na 8TB HDD:</strong> Jelikož jsou oba NVMe disky nezávislé (nejsou v RAIDu), je nutné v zálohovacím skriptu (např. rsync) zrcadlit oba přípojné body <code>/mnt/ai-data</code> i <code>/mnt/ai-models</code> na oddělené složky na 8TB pevném disku. Zálohu stačí spouštět jednou týdně pro modely a denně pro databázi.</p>
+</li>
+<li>
+<p><strong>Trvalý offline režim:</strong> Jakmile stáhnete modely příkazy <code>ollama pull</code> nebo z Hugging Face, můžete server kompletně odpojit od internetu. Lokální AI prostředí je 100% autonomní.</p>
+</li>
+</ol>
+<h1>💾 Strategie a automatizace zálohování na 8TB HDD</h1>
+<p>Vzhledem k tomu, že oba rychlé NVMe disky fungují v asymetrickém režimu bez RAID zrcadlení, je spolehlivé lokální zálohování na interní 3,5 palcový 8TB pevný disk kritickou součástí správy této AI stanice.</p>
+<p>Zálohování je navrženo asymetricky podle typu dat:
+* Datový TLC disk (/mnt/ai-data): Obsahuje vektorové databáze, indexy a zdrojové kódy. Tato data se neustále mění, proto se zálohují denně.
+* Modelový QLC disk (/mnt/ai-models): Obsahuje statické LLM modely. Tato data se mění minimálně (pouze při stažení nového modelu), proto stačí záloha jednou týdně.</p>
+<hr />
+<h2>🛠️ Krok 1: Příprava zálohovacího adresáře</h2>
+<p>Nejprve zkontrolujeme, zda je 8TB plotnový disk správně namontován (předpokládejme bod připojení /mnt/backup) a vytvoříme na něm dedikované složky pro izolované zálohy z obou NVMe disků.</p>
+<pre><code># Vytvoření adresářů pro zálohy dat a modelů
+sudo mkdir -p /mnt/backup/ai-workstation/data
+sudo mkdir -p /mnt/backup/ai-workstation/models
+
+# Přidělení práv vašemu uživateli
+sudo chown -R $USER:$USER /mnt/backup/ai-workstation
+</code></pre>
+<hr />
+<h2>📜 Krok 2: Vytvoření zálohovacího skriptu (rsync)</h2>
+<p>Nástroj rsync je ideální, protože přenáší pouze změněné soubory (přírůstková neboli inkrementální záloha), šetří čas a minimalizuje opotřebení disků. Skript navíc automaticky vynechá swap soubor a dočasnou mezipaměť (cache), aby se neplýtvalo místem na 8TB disku.</p>
+<p>Vytvořte nový soubor skriptu na TLC disku:</p>
+<pre><code>vim /mnt/ai-data/backup_ai.sh
+</code></pre>
+<p>Vložte do souboru následující kód:</p>
+<pre><code>#!/bin/bash
+# Lokální AI Workstation - Zálohovací skript rsync
+
+LOG_FILE="/mnt/ai-data/backup.log"
+echo "=== Zálohování spuštěno: $(date) ===" &gt;&gt; $LOG_FILE
+
+# 1. Záloha aktivních dat a RAG databází (Denní zrcadlení)
+# --exclude vynechá swap soubor, který nemá smysl zálohovat
+echo "Zálohuji /mnt/ai-data..." &gt;&gt; $LOG_FILE
+rsync -av --delete --exclude='swapfile' /mnt/ai-data/ /mnt/backup/ai-workstation/data/ &gt;&gt; $LOG_FILE 2&gt;&amp;1
+
+# 2. Záloha stažených LLM modelů (Týdenní/Denní kontrola velkých souborů)
+echo "Zálohuji /mnt/ai-models..." &gt;&gt; $LOG_FILE
+rsync -av --delete /mnt/ai-models/ /mnt/backup/ai-workstation/models/ &gt;&gt; $LOG_FILE 2&gt;&amp;1
+
+echo "=== Zálohování dokončeno: $(date) ===" &gt;&gt; $LOG_FILE
+echo "--------------------------------------" &gt;&gt; $LOG_FILE
+</code></pre>
+<p>Uložte soubor a ukončete editor. Poté skriptu udělte spustitelná práva:</p>
+<pre><code>chmod +x /mnt/ai-data/backup_ai.sh
+</code></pre>
+<hr />
+<h2>⏱️ Krok 3: Automatizace pomocí Cronu (Plánovač úloh)</h2>
+<p>Aby zálohování probíhalo zcela automaticky a bez vaší asistence, vložíme skript do systémového plánovače úloh (cron). Nejvhodnější čas je v noci, kdy stanice neprovádí žádné analýzy ani fine-tuning.</p>
+<p>Otevřete plánovač úloh pod vaším uživatelem:</p>
+<pre><code>crontab -e
+</code></pre>
+<p>Pokud se cron ptá na výběr editoru, zvolte vim (obvykle volba 1 nebo 2). Na samotný konec souboru vložte tento řádek:</p>
+<pre><code>0 2 * * * /mnt/ai-data/backup_ai.sh
+</code></pre>
+<p>Vysvětlení zápisu (0 2 * * <em>): Skript se spustí automaticky </em><em>každý den ve 2:00 ráno</em>*. Úloha poběží na pozadí a výsledek (včetně případných chyb) zapíše do přehledného textového logu na adrese <code>/mnt/ai-data/backup.log</code>.</p>
+<hr />
+<h2>💡 Pokročilý tip: Ruční spuštění a kontrola logu</h2>
+<p>Pokud provádíte velkou změnu v datech nebo stáhnete sérii nových modelů a nechcete čekat do noci, můžete skript kdykoliv vyvolat ručně:</p>
+<pre><code>/mnt/ai-data/backup_ai.sh
+</code></pre>
+<p>Průběh a historii všech provedených záloh pak můžete v terminálu zkontrolovat jednoduchým výpisem logovacího souboru:</p>
+<pre><code>cat /mnt/ai-data/backup.log
+</code></pre>
+<h1>📂 Příprava archivu a automatické dolování dat přes Qwen3-VL</h1>
+<p>Tato sekce se zaměřuje na praktické nasazení multimodálního modelu Qwen3-VL-8B-Instruct nad vaším 30letým archivem. Ukážeme si správnou strukturu tréninkových dat (JSON) pro případný fine-tuning a funkční Python skript, který automaticky projde složku se starými skeny, zanalyzuje je a výsledky uloží v čistém formátu JSON.</p>
+<hr />
+<h2>📜 Krok 1: Struktura JSON datasetu pro Fine-Tuning archivu</h2>
+<p>Pokud se v budoucnu rozhodnete model doučit specifické firemní pojmy, zkratky nebo struktury starých nákresů z 90. let, musíte data připravit ve formátu JSON, který kombinuje textové otázky s vizuálním kontextem (obrázkem).</p>
+<p>Uložte ukázkový soubor jako /mnt/ai-data/archivni_dataset.json:</p>
+<pre><code>[
+  {
+    "id": "schema_1995_001",
+    "image": "/mnt/ai-data/archiv/1995/schema_001.jpg",
+    "conversations": [
+      {
+        "from": "user",
+        "value": "Extrahuj ze schématu identifikační číslo, datum revize a seznam hlavních komponent."
+      },
+      {
+        "from": "assistant",
+        "value": "ID: CZ-1995-AX9\nDatum revize: 14.11.1995\nKomponenty: Reléový blok R1, Transformátor T2, Centrální sběrnice B-90."
+      }
+    ]
+  },
+  {
+    "id": "log_1998_042",
+    "image": "/mnt/ai-data/archiv/1998/log_042.jpg",
+    "conversations": [
+      {
+        "from": "user",
+        "value": "Přečti poškozený textový log v dolní části skenu a identifikuj chybu."
+      },
+      {
+        "from": "assistant",
+        "value": "Text logu: [1998-04-12 23:14:02] SYS_ERR: Memory allocation failed in segment 0x0F.\nChyba: Selhání alokace paměti v segmentu 0x0F."
+      }
+    ]
+  }
+]
+</code></pre>
+<hr />
+<h2>🐍 Krok 2: Python skript pro hromadnou analýzu složky archivu</h2>
+<p>Tento skript automaticky prohledá určenou složku (např. /mnt/ai-data/archiv_ke_zpracovani), vyhledá v ní obrázky (JPG, PNG), předloží je modelu Qwen3-VL k analýze a výsledky uloží jako strukturovaný JSON soubor na TLC disk.</p>
+<p>Vytvořte soubor skriptu:</p>
+<pre><code>vim /mnt/ai-data/batch_analyze.py
+</code></pre>
+<p>Vložte do něj následující kód:</p>
+<pre><code>import os
+import json
+import torch
+from PIL import Image
+from transformers import AutoTokenizer, AutoProcessor, AutoModelForVision2Seq
+
+# 1. Definice cest a inicializace modelu z rychlého QLC disku
+MODEL_NAME = "Qwen/Qwen3-VL-8B-Instruct"
+INPUT_DIR = "/mnt/ai-data/archiv_ke_zpracovani"
+OUTPUT_FILE = "/mnt/ai-data/vytěžena_data_archivu.json"
+
+print("Načítám model Qwen3-VL do VRAM...")
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+processor = AutoProcessor.from_pretrained(MODEL_NAME)
+model = AutoModelForVision2Seq.from_pretrained(
+    MODEL_NAME, 
+    torch_dtype=torch.bfloat16, 
+    device_map="auto"
+)
+
+# Definice univerzálního promptu pro vaše historická data
+PROMPT = "Popiš toto historické schéma nebo log. Extrahuj veškerý čitelný text, data, ID čísla a ulož je přehledně."
+vysledky = []
+
+# 2. Kontrola vstupního adresáře
+if not os.path.exists(INPUT_DIR):
+    print(f"Chyba: Vstupní složka {INPUT_DIR} neexistuje!")
+    exit()
+
+print(f"Spouštím analýzu souborů ve složce: {INPUT_DIR}")
+
+# 3. Procházení souborů
+for file_name in os.listdir(INPUT_DIR):
+    if file_name.lower().endswith(('.png', '.jpg', '.jpeg')):
+        file_path = os.path.join(INPUT_DIR, file_name)
+        print(f"Zpracovávám: {file_name}...")
+
+        try:
+            # Načtení obrázku a příprava vstupu
+            image = Image.open(file_path).convert("RGB")
+            inputs = processor(images=image, text=PROMPT, return_tensors="pt").to("cuda")
+
+            # Generování odpovědi modelem na GPU
+            with torch.no_grad():
+                outputs = model.generate(**inputs, max_new_tokens=512)
+
+            # Dekódování textu
+            generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+            # Uložení strukturovaného výsledku
+            vysledky.append({
+                "soubor": file_name,
+                "cesta": file_path,
+                "analyza": generated_text
+            })
+        except Exception as e:
+            print(f"Chyba při zpracování souboru {file_name}: {str(e)}")
+
+# 4. Zápis finálního JSON souboru na TLC disk
+with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+    json.dump(vysledky, f, indent=4, ensure_ascii=False)
+
+print(f"Hotovo! Kompletní analýza byla uložena do: {OUTPUT_FILE}")
+</code></pre>
+<hr />
+<h2>🚀 Krok 3: Spuštění skriptu pod ochranou NUMA uzlu</h2>
+<p>Jelikož vaše ThinkStation P720 disponuje dvěma procesory Xeon (NUMA architektura), spouštějte skript vždy navázaný na první procesorový uzel a paměťový řadič. Tím zajistíte, že se data z disku TLC budou do RAM a následně do GPU Quadro P5000 přenášet nejkratší možnou cestou bez interních latencí mezi procesory.</p>
+<p>Aktivujte virtuální prostředí a spusťte skript:</p>
+<pre><code>source /mnt/ai-data/local-ai-venv/bin/activate
+numactl --cpunodebind=0 --membind=0 python /mnt/ai-data/batch_analyze.py
+</code></pre>
+<h1>🔍 Lokální RAG systém nad vytěženými daty archivu</h1>
+<p>Tato sekce popisuje vytvoření inteligentní lokální paměti (Retrieval-Augmented Generation). Využijeme open-source vektorovou databázi ChromaDB, která poběží kompletně offline na vašem TLC disku. Systém dokáže prohledat tisíce stránek analýz schémat z 90. let během několika milisekund a najít přesné souvislosti na základě sémantického významu otázky.</p>
+<hr />
+<h2>📦 Krok 1: Instalace knihoven pro lokální RAG</h2>
+<p>Nejprve musíme v našem virtuálním prostředí na TLC disku doinstalovat vektorovou databázi ChromaDB a nástroje pro práci s textem (Sentence-Transformers), které zajistí lokální převod slov na vektory bez internetu.</p>
+<p>Aktivujte virtuální prostředí a spusťte instalaci:</p>
+<pre><code>source /mnt/ai-data/local-ai-venv/bin/activate
+pip install chromadb sentence-transformers langchain-text-splitters
+</code></pre>
+<hr />
+<h2>🐍 Krok 2: Python skript pro indexaci dat a sémantické vyhledávání</h2>
+<p>Tento skript provádí dvě klíčové činnosti:
+1. <strong>Indexace:</strong> Načte výsledný soubor z předchozího vytěžování (vytěžena_data_archivu.json), texty rozdělí na optimální odstavce, vygeneruje z nich vektory a trvale je uloží do složky /mnt/ai-data/vector-db.
+2. <strong>Vyhledávání:</strong> Umožní vám položit přirozenou otázku (např. v češtině) a vypíše nejrelevantnější historické dokumenty, které s tématem souvisí.</p>
+<p>Vytvořte soubor skriptu:</p>
+<pre><code>vim /mnt/ai-data/rag_archive.py
+</code></pre>
+<p>Vložte do něj následující kód:</p>
+<pre><code>import os
+import json
+import chromadb
+from chromadb.utils import embedding_functions
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+# 1. Definice cest a inicializace lokální databáze
+DB_PATH = "/mnt/ai-data/vector-db"
+DATA_SOURCE = "/mnt/ai-data/vytěžena_data_archivu.json"
+
+print("Inicializuji lokální vektorovou databázi ChromaDB...")
+client = chromadb.PersistentClient(path=DB_PATH)
+
+# Použijeme multilingvální embedding model, který se automaticky stáhne do cache při prvním spuštění
+# Model běží lokálně a převádí český text na vektory
+embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
+    model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+)
+
+# Vytvoření nebo načtení kolekce dokumentů archivu
+collection = client.get_or_create_collection(
+    name="archiv_90_let", 
+    embedding_function=embedding_fn
+)
+
+# 2. Funkce pro import dat z JSON do vektorové databáze
+def indexovat_archiv():
+    if not os.path.exists(DATA_SOURCE):
+        print(f"Chyba: Zdrojový soubor {DATA_SOURCE} neexistuje. Nejprve spusťte batch_analyze.py.")
+        return
+
+    with open(DATA_SOURCE, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    # Nastavení rozsekávače textu (ideální velikost bloku pro RAG)
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=50
+    )
+
+    print(f"Spouštím indexaci dokumentů z {DATA_SOURCE}...")
+
+    counter = 0
+    for polozka in data:
+        soubor = polozka["soubor"]
+        text_analyzy = polozka["analyza"]
+
+        # Rozdělení dlouhého textu analýzy na menší logické kusy
+        odstavce = text_splitter.split_text(text_analyzy)
+
+        for i, odstavec in enumerate(odstavce):
+            doc_id = f"{soubor}_chunk_{i}"
+
+            # Uložení do databáze včetně metadat pro zpětné dohledání souboru
+            collection.add(
+                documents=[odstavec],
+                metadatas=[{"zdrojový_soubor": soubor, "cesta": polozka["cesta"]}],
+                ids=[doc_id]
+            )
+            counter += 1
+
+    print(f"Indexace dokončena. Do databáze bylo úspěšně uloženo {counter} textových bloků.")
+
+# 3. Funkce pro sémantické vyhledávání v archivu
+def vyhledat_v_archivu(dotaz, top_n=3):
+    print(f"\nHledám v archivu dotaz: '{dotaz}'")
+
+    vysledky = collection.query(
+        query_texts=[dotaz],
+        n_results=top_n
+    )
+
+    # Výpis nalezených výsledků
+    for i in range(len(vysledky["documents"][0])):
+        dokument = vysledky["documents"][0][i]
+        metadata = vysledky["metadatas"][0][i]
+        vzdalenost = vysledky["distances"][0][i] # Nižší číslo = vyšší shoda
+
+        print(f"\n[{i+1}. Shoda - Soubor: {metadata['zdrojový_soubor']} | Skóre shody: {round(vzdalenost, 4)}]")
+        print(f"Cesta k originálu: {metadata['cesta']}")
+        print(f"Nalezený textový kontext:\n{dokument}")
+        print("-" * 50)
+
+# 4. Spuštění logiky skriptu
+if __name__ == "__main__":
+    # Při prvním spuštění odkomentujte následující řádek pro naplnění databáze:
+    # indexovat_archiv()
+
+    # Ukázka sémantického vyhledávání nad archivem:
+    vyhledat_v_archivu("Chyba alokace paměti reléového bloku v devadesátých letech")
+</code></pre>
+<hr />
+<h2>🚀 Krok 3: Spuštění vyhledávání pod NUMA ochranou</h2>
+<p>Indexace a porovnávání vektorů extrémně zatěžuje procesor a paměťovou propustnost. Pro dosažení maximálního výkonu 40 vláken vašich procesorů Xeon spouštějte RAG systém vždy svázaný s prvním procesorovým uzlem, kde jsou na NVMe disku uložena i samotná data databáze.</p>
+<p>Aktivujte virtuální prostředí a spusťte vyhledávání:</p>
+<pre><code>source /mnt/ai-data/local-ai-venv/bin/activate
+numactl --cpunodebind=0 --membind=0 python /mnt/ai-data/rag_archive.py
+</code></pre>
+<h1>🗺️ Architektonické diagramy lokální AI stanice</h1>
+<p>Pro snadné pochopení celého ekosystému jsou níže vyobrazeny dva diagramy: hardwarové rozložení (asymetrická topologie disků a NUMA) a softwarový tok dat při vytěžování a vyhledávání v archivu. Všechny texty v diagramech byly zvětšeny na dvojnásobek pro maximální čitelnost.</p>
+<hr />
+<h2>1. Hardwarová architektura a rozložení disků</h2>
+<p>Tento diagram znázorňuje hardwarové toky v Lenovo ThinkStation P720 uspořádané logicky shora dolů podle rychlosti a účelu – od výpočetního jádra až po zálohovací úložiště.</p>
+<pre><code class="language-mermaid">graph TD
+    %% Definice globální třídy pro obří písmo uzlů
+    classDef obri font-size:24px;
+
+    %% Zvětšení textu na propojovacích šipkách
+    linkStyle default font-size:20px;
+
+    subgraph H_1 [&lt;span style='font-size:24px;'&gt;1. Výpočetní Jádro &amp; RAM &amp; GPU&lt;/span&gt;]
+        Xeon[2x Intel Xeon Silver 4210 &lt;br&gt; 20 jader / 40 vláken]:::obri
+        RAM[64 GB DDR4 ECC RAM &lt;br&gt; Uzel NUMA 0 preferován]:::obri
+        GPU[NVIDIA Quadro P5000 &lt;br&gt; 16 GB GDDR5X VRAM]:::obri
+        Xeon --- RAM
+        Xeon --- GPU
+    end
+
+    subgraph H_2 [&lt;span style='font-size:24px;'&gt;2. Systémový Svazek&lt;/span&gt;]
+        SYS_ZFS[2x 256 GB SSD &lt;br&gt; Zapojení: ZFS Mirror / RAID 1]:::obri --&gt; OS_LOG[Operační systém Ubuntu 26.04 &lt;br&gt; &amp; Systémové logy]:::obri
+    end
+
+    subgraph H_3 [&lt;span style='font-size:24px;'&gt;3. Aktivní AI Úložiště /mnt/ai-data&lt;/span&gt;]
+        TLC[2TB M.2 NVMe PCIe 3.0 TLC &lt;br&gt; Životnost: 1500 TBW]:::obri
+        VDB[Vektorová DB ChromaDB &lt;br&gt; /vector-db]:::obri
+        SWAP[32 GB Swap soubor &lt;br&gt; vm.swappiness = 10]:::obri
+        VENV[Python virtuální prostředí &lt;br&gt; &amp; Skripty]:::obri
+        TLC --&gt; VDB
+        TLC --&gt; SWAP
+        TLC --&gt; VENV
+    end
+
+    subgraph H_4 [&lt;span style='font-size:24px;'&gt;4. Statická Knihovna /mnt/ai-models&lt;/span&gt;]
+        QLC[2TB M.2 NVMe PCIe 4.0 QLC &lt;br&gt; Rychlost čtení: 4500 MB/s]:::obri --&gt; MODELS[Knihovna AI Modelů &lt;br&gt; Qwen3-VL, LLaVA, Llama3, Whisper]:::obri
+    end
+
+    subgraph H_5 [&lt;span style='font-size:24px;'&gt;5. Zálohovací Úložiště /mnt/backup&lt;/span&gt;]
+        HDD[1x 8TB 3,5 palců HDD &lt;br&gt; Cold Storage / Plotnový]:::obri
+        B_DATA[Denní záloha dat a RAG indexů]:::obri
+        B_MOD[Týdenní záloha modelů]:::obri
+        HDD --&gt; B_DATA
+        HDD --&gt; B_MOD
+    end
+
+    %% Vertikální toky mezi vrstvami
+    H_1 --&gt;|Spouští a řídí| H_2
+    H_1 ===|Intenzivní zápisy a čtení DB| H_3
+    MODELS ===|Ultra rychlé načítání do VRAM| GPU
+    H_3 -.-&gt;|Denní přírůstkový rsync| B_DATA
+    H_4 -.-&gt;|Týdenní kontrolní rsync| B_MOD
+</code></pre>
+<h3>Popis hardwarového schématu:</h3>
+<ul>
+<li><strong>NUMA a RAM:</strong> Náročné výpočty jsou uzamčeny na první procesor (Uzel 0), což zajišťuje nejkratší možnou trasu dat do RAM a VRAM grafické karty bez zpoždění na vnitřní sběrnici.</li>
+<li><strong>Separace TLC vs QLC:</strong> Databáze a 32GB odkládací paměti (Swap) neustále zapisují data. Jsou proto umístěny na odolnějším TLC disku (1500 TBW). Obrovské soubory modelů jsou uloženy na bleskovém QLC disku (čtení 4500 MB/s), odkud se při startu AI bleskově jednorázově načtou do 16 GB VRAM grafické karty, čímž se QLC disk opotřebovává minimálně.</li>
+</ul>
+<hr />
+<h2>2. Softwarový tok dat (Pipeline)</h2>
+<p>Tento diagram znázorňuje životní cyklus dokumentu řazený přehledně pod sebou (vertikálně) – od surového historického skenu z 90. let, přes multimodální analýzu, až po sémantické vyhledávání v lokálním RAG systému.</p>
+<pre><code class="language-mermaid">graph TD
+    %% Globální definice velikosti písma pro texty v blocích
+    style Sken font-size:24px
+    style Qwen font-size:24px
+    style JSON font-size:24px
+    style Split font-size:24px
+    style Embed font-size:24px
+    style Chroma font-size:24px
+    style User font-size:24px
+    style QueryEmbed font-size:24px
+    style Results font-size:24px
+
+    subgraph F_1 [1. Fáze: Multimodální Vytěžování]
+        Sken[Surový sken z 90. let &lt;br&gt; Schéma / Log v JPG] --&gt;|batch_analyze.py| Qwen[Model Qwen3-VL &lt;br&gt; Analýza obrazu na GPU]
+        Qwen --&gt;|Extrakce textu a dat| JSON[vytěžena_data_archivu.json &lt;br&gt; Strukturovaný textový výstup]
+    end
+
+    subgraph F_2 [2. Fáze: Lokální Indexace]
+        JSON --&gt;|rag_archive.py| Split[LangChain Splitter &lt;br&gt; Rozsekání textu na 500zn. bloky]
+        Split --&gt;|Sentence-Transformers| Embed[Lokální Embedding Model &lt;br&gt; Převod textu na matematické vektory]
+        Embed --&gt;|Uložení na TLC disk| Chroma[ChromaDB &lt;br&gt; Vektorová databáze offline]
+    end
+
+    subgraph F_3 [3. Fáze: Sémantické Vyhledávání]
+        Chroma --- User[Uživatel: Dotaz v češtině]
+        User --&gt;|Hledám chybu relé z r. 1995| QueryEmbed[Převod dotazu na vektor]
+        QueryEmbed --&gt;|Matematické porovnání shody v databázi| Results[Zobrazení textu + Cesty k originálnímu souboru]
+    end
+</code></pre>
+<h3>Popis softwarového schématu:</h3>
+<ul>
+<li><strong>Vytěžování:</strong> Multimodální model Qwen3-VL funguje jako digitální archeolog. Přijme obrázek, „přečte“ technické detaily a vyplivne čistý textový soubor JSON.</li>
+<li><strong>Indexace a RAG:</strong> Text se rozseká na menší odstavce, aby vyhledávání bylo přesné. Embedding model přeloží lidská slova do řeči čísel (vektorovů). ChromaDB tyto vektory trvale uloží.</li>
+<li><strong>Sémantika:</strong> Když se uživatel zeptá na nějaký problém, systém nehledá přesnou shodu písmen, ale shodu významu (kontextu) a okamžitě mu ukáže, ve kterém souboru na disku se daná informace nachází.</li>
+</ul>
+<hr />
+<h2>📚 Reference a dokumentace</h2>
+<ul>
+<li>Projekt Qwen3-VL: https://huggingface.co</li>
+<li>Dokumentace ekosystému Ollama: https://ollama.com</li>
+<li>Instalace lokálního PyTorch: https://pytorch.org</li>
+<li>Knihovna pro finetuning TRL: https://huggingface.co</li>
+</ul>
+<h3>📎 Citace (Harvard Style)</h3>
+<ul>
+<li>Alibaba Cloud. (2025). <em>Qwen3-VL-8B-Instruct</em>. Hugging Face. Dostupné na: https://huggingface.co [Přístup 2. června 2026].</li>
+<li>Hugging Face. (2024). <em>Transformers documentation</em>. Dostupné na: https://huggingface.co [Přístup 2. června 2026].</li>
+<li>Ollama. (2025). <em>Ollama: run models locally</em>. Dostupné na: https://ollama.com [Přístup 2. června 2026].</li>
+<li>PyTorch Team. (2024). <em>PyTorch with CUDA</em>. Dostupné na: https://pytorch.org [Přístup 2. června 2026].</li>
+</ul>
 
 <p style="margin-top: 2em;"><a href="../index.html">← Zpět na přehled</a></p>
 </body>
