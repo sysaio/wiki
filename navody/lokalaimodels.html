@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>lokalaimodels</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 2em; line-height: 1.6; }
+    img { max-width: 100%; height: auto; }
+    pre { background: #f4f4f4; padding: 1em; border-radius: 5px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+  </style>
+</head>
+<body>
+<h1>Lokální LLM modely pro Ollama (Lenovo ThinkStation P720)</h1>
+<p>Tato stránka obsahuje doporučené AI modely pro nástroj <strong>Ollama</strong>, optimalizované pro hardwarovou konfiguraci této pracovní stanice.</p>
+<h2>Hardwarový profil stanice</h2>
+<ul>
+<li><strong>Grafická karta (GPU):</strong> NVIDIA Quadro P5000 (16 GB VRAM)</li>
+<li><strong>Procesor (CPU):</strong> 2x Intel Xeon Silver 4210 (Celkem 20 jader / 40 vláken)</li>
+<li><strong>Operační paměť (RAM):</strong> 64 GB</li>
+</ul>
+<blockquote>
+<p>[!TIP]
+Pro maximální rychlost generování (tokenů za sekundu) je klíčové, aby se celý model vešel do <strong>16 GB VRAM</strong> grafické karty. Pokud model tuto kapacitu překročí, Ollama jej rozdělí mezi GPU a systémovou RAM, což výrazně sníží rychlost kvůli limitům propustnosti sběrnice.</p>
+</blockquote>
+<hr />
+<h2>🚀 Doporučené modely podle kategorií</h2>
+<h3>1. Univerzální a konverzační modely</h3>
+<p>Ideální pro každodenní úkoly, kreativní psaní, sumarizaci textů a obecné dotazy. Všechny tyto modely běžící kompletně ve VRAM jsou extrémně rychlé.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Příkaz pro spuštění</th>
+<th style="text-align: left;">Model</th>
+<th style="text-align: center;">Velikost</th>
+<th style="text-align: center;">Využití VRAM</th>
+<th style="text-align: left;">Hlavní výhody</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>ollama run llama3.1:8b</code></td>
+<td style="text-align: left;">Llama 3.1 (Meta)</td>
+<td style="text-align: center;">8B</td>
+<td style="text-align: center;">~5 GB</td>
+<td style="text-align: left;">Špičkový standard, skvělá čeština, velmi rychlá odezva.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ollama run qwen2.5:14b</code></td>
+<td style="text-align: left;">Qwen 2.5 (Alibaba)</td>
+<td style="text-align: center;">14B</td>
+<td style="text-align: center;">~9 GB</td>
+<td style="text-align: left;">Vynikající logické uvažování, perfektní gramatika a styl v češtině.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ollama run mistral:7b</code></td>
+<td style="text-align: left;">Mistral (Mistral AI)</td>
+<td style="text-align: center;">7B</td>
+<td style="text-align: center;">~4 GB</td>
+<td style="text-align: left;">Prověřený, rychlý a efektivní evropský model.</td>
+</tr>
+</tbody>
+</table>
+<h3>2. Modely pro vývoj a programování (Coding)</h3>
+<p>Slouží jako lokální, bezpečný a plně soukromý asistent pro psaní, analýzu a refaktorování kódu (náhrada za GitHub Copilot).</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Příkaz pro spuštění</th>
+<th style="text-align: left;">Model</th>
+<th style="text-align: center;">Velikost</th>
+<th style="text-align: center;">Využití VRAM</th>
+<th style="text-align: left;">Hlavní výhody</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>ollama run qwen2.5-coder:14b</code></td>
+<td style="text-align: left;">Qwen 2.5 Coder</td>
+<td style="text-align: center;">14B</td>
+<td style="text-align: center;">~9 GB</td>
+<td style="text-align: left;">Aktuální král otevřených coding modelů. Zvládá i komplexní architekturu.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ollama run codegemma:7b</code></td>
+<td style="text-align: left;">CodeGemma (Google)</td>
+<td style="text-align: center;">7B</td>
+<td style="text-align: center;">~5 GB</td>
+<td style="text-align: left;">Odlehčený model od Google optimalizovaný na doplňování kódu (completion).</td>
+</tr>
+</tbody>
+</table>
+<h3>3. Modely s pokročilým uvažováním (Reasoning)</h3>
+<p>Modely typu "O1", které před samotnou odpovědí generují interní myšlenkový proces (chain-of-thought). Jsou ideální na složitou matematiku, logické hádanky a hloubkovou analýzu chyb v kódu.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Příkaz pro spuštění</th>
+<th style="text-align: left;">Model</th>
+<th style="text-align: center;">Velikost</th>
+<th style="text-align: center;">Využití VRAM</th>
+<th style="text-align: left;">Hlavní výhody</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>ollama run deepseek-r1:14b</code></td>
+<td style="text-align: left;">DeepSeek R1</td>
+<td style="text-align: center;">14B</td>
+<td style="text-align: center;">~9 GB</td>
+<td style="text-align: left;">Perfektní balanc mezi inteligencí a rychlostí na 16GB VRAM.</td>
+</tr>
+</tbody>
+</table>
+<h3>4. Maximální zátěž (Experimentální limit)</h3>
+<p>Pokud potřebujete maximální možnou inteligenci modelu a nevadí vám nižší rychlost generování (jednotky slov za sekundu). Tyto modely využijí kombinaci GPU a masivní 64 GB systémové RAM spolu s 40 vlákny procesorů Xeon.</p>
+<ul>
+<li><strong><code>ollama run deepseek-r1:32b</code></strong> (Zabere ~20 GB paměti – část poběží v RAM)</li>
+<li><strong><code>ollama run llama3.1:70b</code></strong> (Zabere ~40 GB paměti – vyžaduje silnou asistenci CPU a RAM)</li>
+</ul>
+<hr />
+<h2>🛠️ Užitečné příkazy pro monitoring</h2>
+<p>Během toho, co model generuje odpověď v terminálu, doporučujeme sledovat využití hardwaru:</p>
+<ul>
+<li>
+<p><strong>Sledování zatížení GPU a VRAM:</strong>
+  <code>bash
+  nvidia-smi</code>
+  <em>(Ověříte zde, zda Ollama správně alokovala model do paměti grafické karty a kolik VRAM zbývá.)</em></p>
+</li>
+<li>
+<p><strong>Sledování zatížení CPU a RAM:</strong>
+  <code>bash
+  htop</code>
+  <em>(Užitečné hlavně při spuštění velkých modelů jako 32B/70B pro kontrolu, jak moc jsou vytížena všechna jádra vašich procesorů Xeon.)</em></p>
+</li>
+</ul>
+
+<p style="margin-top: 2em;"><a href="../index.html">← Zpět na přehled</a></p>
+</body>
+</html>
