@@ -833,6 +833,800 @@ print(f&quot;{iterations/elapsed:.2f} matmul/s&quot;)
 <li>reálné vytížení grafické karty během benchmarku.</li>
 </ul>
 <p>Tím bylo prostředí připraveno pro samotnou instalaci a spuštění ComfyUI.</p>
+<h1>5. První spuštění ComfyUI</h1>
+<p>Po úspěšné instalaci Pythonu, PyTorch a CUDA bylo možné přejít k samotnému spuštění ComfyUI.</p>
+<p>Tentokrát již ve zcela novém prostředí založeném na:</p>
+<ul>
+<li>Python 3.12.13</li>
+<li>PyTorch 2.4.1 + CUDA 12.1</li>
+<li>NVIDIA Quadro P5000 (Pascal, 16 GB VRAM)</li>
+</ul>
+<hr />
+<h1>Přechod do projektu</h1>
+<p>Nejprve aktivujeme virtuální prostředí.</p>
+<pre><code class="language-bash">source /mnt/models/envs/comfyui312/bin/activate
+</code></pre>
+<p>Poté přejdeme do adresáře ComfyUI.</p>
+<pre><code class="language-bash">cd /mnt/models/comfyui
+</code></pre>
+<hr />
+<h1>Kontrola prostředí</h1>
+<p>Před spuštěním doporučuji vždy zkontrolovat, že používáme správný Python.</p>
+<pre><code class="language-bash">python --version
+</code></pre>
+<p>Výstup:</p>
+<pre><code class="language-text">Python 3.12.13
+</code></pre>
+<p>Dále ověříme PyTorch.</p>
+<pre><code class="language-bash">python -c &quot;import torch; print(torch.__version__)&quot;
+</code></pre>
+<p>Výstup:</p>
+<pre><code class="language-text">2.4.1+cu121
+</code></pre>
+<p>Tím máme jistotu, že skutečně používáme nově vytvořené prostředí.</p>
+<hr />
+<h1>Spuštění ComfyUI</h1>
+<p>Samotné spuštění je velmi jednoduché.</p>
+<pre><code class="language-bash">python main.py
+</code></pre>
+<p>Po několika sekundách začne ComfyUI vypisovat informace o inicializaci.</p>
+<p>Většina těchto zpráv je pouze informativní.</p>
+<p>Není potřeba se jich lekat.</p>
+<hr />
+<h1>Informace o grafické kartě</h1>
+<p>Jedna z nejdůležitějších částí výpisu je tato.</p>
+<pre><code class="language-text">Total VRAM 16264 MB
+</code></pre>
+<p>To potvrzuje správnou detekci 16 GB grafické paměti.</p>
+<p>Dále:</p>
+<pre><code class="language-text">Device:
+cuda:0
+Quadro P5000
+</code></pre>
+<p>To znamená, že ComfyUI používá CUDA zařízení číslo 0.</p>
+<hr />
+<h1>Stav VRAM</h1>
+<p>Ve výpisu se objeví například:</p>
+<pre><code class="language-text">Set vram state to:
+NORMAL_VRAM
+</code></pre>
+<p>To znamená, že ComfyUI nebude agresivně přesouvat modely mezi RAM a VRAM.</p>
+<p>Na kartě s 16 GB je to správná volba.</p>
+<hr />
+<h1>Async Memory</h1>
+<p>Další zajímavá informace:</p>
+<pre><code class="language-text">cudaMallocAsync
+</code></pre>
+<p>a</p>
+<pre><code class="language-text">Using async weight offloading
+</code></pre>
+<p>Novější verze PyTorch používají modernější správu CUDA paměti.</p>
+<p>Výsledkem bývá:</p>
+<ul>
+<li>menší fragmentace VRAM,</li>
+<li>stabilnější běh,</li>
+<li>rychlejší načítání modelů.</li>
+</ul>
+<hr />
+<h1>Pinned Memory</h1>
+<p>Další řádek:</p>
+<pre><code class="language-text">Enabled pinned memory
+</code></pre>
+<p>Pinned memory umožňuje rychlejší kopírování dat mezi RAM a VRAM.</p>
+<p>Není potřeba nic nastavovat.</p>
+<p>Pokud se tato hláška objeví, vše funguje správně.</p>
+<hr />
+<h1>Pozornost věnujte pouze hláškám ERROR</h1>
+<p>Ve výpisu se mohou objevit různá upozornění.</p>
+<p>Například:</p>
+<pre><code class="language-text">WARNING:
+Unsupported Pytorch detected.
+DynamicVRAM support requires Pytorch version 2.8 or later.
+</code></pre>
+<p>To není chyba.</p>
+<p>Pouze informace, že některé nejnovější funkce nejsou dostupné.</p>
+<p>Na provoz Stable Diffusion 1.5 to nemá prakticky žádný vliv.</p>
+<hr />
+<h1>Upozornění na CUDA 13</h1>
+<p>Objevila se také zpráva:</p>
+<pre><code class="language-text">You need pytorch with cu130 or higher
+to use optimized CUDA operations.
+</code></pre>
+<p>Ani tato hláška není kritická.</p>
+<p>Pouze oznamuje, že některé nové optimalizace byly napsány až pro CUDA 13.</p>
+<p>Na architektuře Pascal je jejich význam minimální.</p>
+<p>Rozhodli jsme se proto zůstat u stabilnější konfigurace CUDA 12.1.</p>
+<hr />
+<h1>Databáze</h1>
+<p>Při prvním spuštění ComfyUI vytvoří interní databázi.</p>
+<p>Ve výpisu se objeví například:</p>
+<pre><code class="language-text">Running upgrade...
+</code></pre>
+<p>nebo</p>
+<pre><code class="language-text">Database upgraded...
+</code></pre>
+<p>To je zcela normální.</p>
+<p>Provádí se pouze při prvním spuštění nebo po aktualizaci ComfyUI.</p>
+<hr />
+<h1>Frontend</h1>
+<p>Ve výpisu se objeví také informace o webovém rozhraní.</p>
+<p>Například:</p>
+<pre><code class="language-text">comfyui-frontend-package
+</code></pre>
+<p>To znamená, že byl úspěšně načten grafický frontend.</p>
+<hr />
+<h1>Webový server</h1>
+<p>Úplně na konci výpisu se objeví nejdůležitější řádek.</p>
+<pre><code class="language-text">Starting server
+</code></pre>
+<p>Po několika okamžicích následuje:</p>
+<pre><code class="language-text">To see the GUI go to:
+
+http://127.0.0.1:8188
+</code></pre>
+<p>To znamená, že ComfyUI běží.</p>
+<p>Stačí otevřít webový prohlížeč.</p>
+<pre><code>http://127.0.0.1:8188
+</code></pre>
+<p>Pokud se otevírá na stejném počítači, není potřeba nic dalšího nastavovat.</p>
+<hr />
+<h1>Jak poznat, že je vše v pořádku</h1>
+<p>Správně spuštěné ComfyUI má obvykle tyto znaky.</p>
+<p>✔ Python 3.12</p>
+<p>✔ PyTorch 2.4.1</p>
+<p>✔ CUDA zařízení nalezeno</p>
+<p>✔ Quadro P5000 rozpoznána</p>
+<p>✔ Přibližně 16 GB VRAM</p>
+<p>✔ Server naslouchá na portu 8188</p>
+<p>✔ Žádná hláška ERROR</p>
+<p>Pokud platí všechny body výše, je instalace úspěšná.</p>
+<hr />
+<h1>Co jsme zatím ještě neměli</h1>
+<p>Po prvním spuštění bylo prostředí připravené, ale stále chyběly samotné modely.</p>
+<p>Bez checkpointu neumí ComfyUI generovat obrázky.</p>
+<p>To bude cílem následující kapitoly.</p>
+<hr />
+<h1>Shrnutí kapitoly</h1>
+<p>V této části jsme:</p>
+<ul>
+<li>poprvé spustili ComfyUI,</li>
+<li>ověřili správnou detekci GPU,</li>
+<li>zkontrolovali VRAM,</li>
+<li>prošli význam jednotlivých hlášek,</li>
+<li>ověřili spuštění webového rozhraní.</li>
+</ul>
+<p>Tím byla dokončena samotná instalace prostředí.</p>
+<p>V následující kapitole připravíme adresářovou strukturu pro modely, nastavíme <code>extra_model_paths.yaml</code> a stáhneme první checkpoint Stable Diffusion.</p>
+<h1>6. Centrální knihovna modelů a první checkpoint</h1>
+<p>Jakmile bylo ComfyUI úspěšně spuštěno, bylo potřeba vyřešit ještě jednu důležitou věc.</p>
+<p>Kam ukládat AI modely?</p>
+<p>Na první pohled se nabízí použít výchozí adresáře uvnitř ComfyUI.</p>
+<p>Například:</p>
+<pre><code class="language-text">comfyui/models/checkpoints
+</code></pre>
+<p>To funguje.</p>
+<p>Jenže má jednu zásadní nevýhodu.</p>
+<p>Pokud někdy:</p>
+<ul>
+<li>přeinstalujeme ComfyUI,</li>
+<li>budeme chtít používat více AI aplikací,</li>
+<li>budeme testovat novou verzi,</li>
+</ul>
+<p>budeme modely zbytečně kopírovat nebo přesouvat.</p>
+<p>Proto jsme zvolili jinou architekturu.</p>
+<hr />
+<h1>Samostatný adresář pro všechny modely</h1>
+<p>Veškeré modely budou uloženy mimo ComfyUI.</p>
+<p>Použili jsme adresář:</p>
+<pre><code class="language-text">/mnt/models/ai-models
+</code></pre>
+<p>Výhody tohoto řešení:</p>
+<ul>
+<li>modely existují pouze jednou,</li>
+<li>ComfyUI lze kdykoliv smazat,</li>
+<li>jiná AI aplikace může používat stejné soubory,</li>
+<li>zálohování je jednodušší.</li>
+</ul>
+<p>Právě tento přístup používá většina lidí, kteří mají větší sbírku modelů.</p>
+<hr />
+<h1>Navržená struktura adresářů</h1>
+<p>Vytvořili jsme následující adresářovou strukturu.</p>
+<pre><code class="language-text">/mnt/models/ai-models
+│
+├── checkpoints
+│   ├── sd15
+│   ├── sdxl
+│   └── experimental
+│
+├── loras
+│   ├── sd15
+│   └── sdxl
+│
+├── controlnet
+├── vae
+├── embeddings
+└── upscale
+</code></pre>
+<p>Jednotlivé části mají jasný význam.</p>
+<hr />
+<h2>checkpoints</h2>
+<p>Obsahují celé modely.</p>
+<p>Například:</p>
+<ul>
+<li>Stable Diffusion 1.5</li>
+<li>DreamShaper</li>
+<li>Juggernaut</li>
+<li>Realistic Vision</li>
+<li>SDXL Base</li>
+</ul>
+<p>Právě odtud se vybírá model v uzlu <strong>Load Checkpoint</strong>.</p>
+<hr />
+<h2>loras</h2>
+<p>Sem patří všechny LoRA modely.</p>
+<p>Například:</p>
+<ul>
+<li>styl kresby,</li>
+<li>anime,</li>
+<li>realistické obličeje,</li>
+<li>architektura,</li>
+<li>fantasy.</li>
+</ul>
+<p>Oddělení podle SD15 a SDXL výrazně zpřehledňuje knihovnu.</p>
+<hr />
+<h2>controlnet</h2>
+<p>Sem budou později patřit všechny ControlNet modely.</p>
+<p>Například:</p>
+<ul>
+<li>Canny</li>
+<li>Depth</li>
+<li>OpenPose</li>
+<li>Tile</li>
+<li>SoftEdge</li>
+</ul>
+<hr />
+<h2>VAE</h2>
+<p>Samostatné VAE modely.</p>
+<p>Ve většině případů dnes nejsou potřeba.</p>
+<p>Je ale dobré mít pro ně připravený adresář.</p>
+<hr />
+<h2>Embeddings</h2>
+<p>Textual Inversion.</p>
+<p>Malé pomocné modely používané přímo v promptu.</p>
+<hr />
+<h2>Upscale</h2>
+<p>Sem budou patřit ESRGAN a další modely pro zvětšování obrázků.</p>
+<hr />
+<h1>Vytvoření adresářů</h1>
+<p>Celou strukturu vytvoří jediný příkaz.</p>
+<pre><code class="language-bash">mkdir -p \
+/mnt/models/ai-models/{checkpoints/{sd15,sdxl,experimental},loras/{sd15,sdxl},vae,controlnet,embeddings,upscale}
+</code></pre>
+<p>Kontrola:</p>
+<pre><code class="language-bash">tree -L 3 /mnt/models/ai-models
+</code></pre>
+<p>Výstup by měl být podobný tomuto:</p>
+<pre><code class="language-text">ai-models
+├── checkpoints
+│   ├── experimental
+│   ├── sd15
+│   └── sdxl
+├── controlnet
+├── embeddings
+├── loras
+│   ├── sd15
+│   └── sdxl
+├── upscale
+└── vae
+</code></pre>
+<hr />
+<h1>Proč nepoužívat models/</h1>
+<p>ComfyUI standardně očekává modely zde:</p>
+<pre><code class="language-text">comfyui/models
+</code></pre>
+<p>To je vhodné pouze pro malé instalace.</p>
+<p>My jsme chtěli mít modely oddělené od aplikace.</p>
+<p>Proto využijeme soubor:</p>
+<pre><code class="language-text">extra_model_paths.yaml
+</code></pre>
+<hr />
+<h1>Vytvoření konfiguračního souboru</h1>
+<p>Nejprve zkopírujeme vzor.</p>
+<pre><code class="language-bash">cd /mnt/models/comfyui
+
+cp extra_model_paths.yaml.example extra_model_paths.yaml
+</code></pre>
+<p>Tím vznikne nový konfigurační soubor.</p>
+<hr />
+<h1>Nastavení vlastních cest</h1>
+<p>Do souboru jsme přidali vlastní konfiguraci.</p>
+<pre><code class="language-yaml">ai-models:
+  base_path: /mnt/models/ai-models
+
+  checkpoints: |
+    checkpoints/sd15
+    checkpoints/sdxl
+    checkpoints/experimental
+
+  loras: |
+    loras/sd15
+    loras/sdxl
+
+  vae: vae
+  controlnet: controlnet
+  embeddings: embeddings
+  upscale_models: upscale
+</code></pre>
+<p>Po restartu začne ComfyUI automaticky používat tyto adresáře.</p>
+<p>Výchozí adresář <code>models/</code> uvnitř ComfyUI přitom zůstává zachován.</p>
+<p>Lze tedy používat oba způsoby současně.</p>
+<hr />
+<h1>Instalace Hugging Face CLI</h1>
+<p>Modely budeme stahovat přímo z Hugging Face.</p>
+<p>Nejprve ověříme, že máme nainstalovaný nástroj <code>hf</code>.</p>
+<pre><code class="language-bash">hf --help
+</code></pre>
+<p>Pokud se zobrazí seznam příkazů, je vše připraveno.</p>
+<p>Není nutné se přihlašovat.</p>
+<p>Pouze se při stahování zobrazí upozornění na nižší rychlost.</p>
+<hr />
+<h1>První model</h1>
+<p>Jako první jsme zvolili model DreamShaper 8.</p>
+<p>Jedná se o jeden z nejznámějších modelů postavených na Stable Diffusion 1.5.</p>
+<p>Model kombinuje:</p>
+<ul>
+<li>realistické fotografie,</li>
+<li>ilustrace,</li>
+<li>fantasy,</li>
+<li>digitální umění.</li>
+</ul>
+<p>Současně je velmi nenáročný na VRAM.</p>
+<p>Proto je ideální pro grafické karty architektury Pascal.</p>
+<hr />
+<h1>Stažení modelu</h1>
+<p>Po několika pokusech se ukázalo, že správný název souboru je:</p>
+<pre><code class="language-text">DreamShaper_8_pruned.safetensors
+</code></pre>
+<p>Po stažení jsme jej uložili do:</p>
+<pre><code class="language-text">/mnt/models/ai-models/checkpoints/sd15/
+</code></pre>
+<p>Kontrola:</p>
+<pre><code class="language-bash">ls -lh /mnt/models/ai-models/checkpoints/sd15
+</code></pre>
+<p>Výstup:</p>
+<pre><code class="language-text">DreamShaper_8_pruned.safetensors
+</code></pre>
+<p>Velikost přibližně:</p>
+<pre><code class="language-text">2 GB
+</code></pre>
+<hr />
+<h1>Restart ComfyUI</h1>
+<p>Po přidání nového modelu je vhodné ComfyUI restartovat.</p>
+<p>Po opětovném spuštění se nový checkpoint automaticky objeví v seznamu modelů.</p>
+<p>Nebyla potřeba žádná další konfigurace.</p>
+<hr />
+<h1>Ověření</h1>
+<p>Ve webovém rozhraní otevřeme uzel:</p>
+<pre><code class="language-text">Load Checkpoint
+</code></pre>
+<p>V rozbalovacím seznamu by měl být vidět:</p>
+<pre><code class="language-text">DreamShaper_8_pruned
+</code></pre>
+<p>Pokud je model v seznamu, znamená to, že:</p>
+<ul>
+<li><code>extra_model_paths.yaml</code> je správně nastaven,</li>
+<li>ComfyUI našlo centrální knihovnu modelů,</li>
+<li>checkpoint je připraven k použití.</li>
+</ul>
+<hr />
+<h1>Shrnutí kapitoly</h1>
+<p>V této části jsme:</p>
+<ul>
+<li>vytvořili centrální knihovnu modelů,</li>
+<li>navrhli přehlednou adresářovou strukturu,</li>
+<li>nastavili <code>extra_model_paths.yaml</code>,</li>
+<li>připravili Hugging Face CLI,</li>
+<li>stáhli první checkpoint,</li>
+<li>úspěšně jej zpřístupnili v ComfyUI.</li>
+</ul>
+<p>V následující kapitole vytvoříme první workflow a vygenerujeme první obrázek pomocí modelu DreamShaper 8.</p>
+<h1>7. První workflow a první vygenerovaný obrázek</h1>
+<p>Po dokončení instalace a přidání prvního modelu bylo konečně možné vyzkoušet samotné generování obrázků.</p>
+<p>Přestože je ComfyUI velmi výkonný nástroj, první spuštění může být pro nového uživatele poněkud matoucí.</p>
+<p>Na rozdíl od Automatic1111 nebo Fooocus zde není žádné jednoduché textové pole pro prompt.</p>
+<p>Vše se skládá pomocí grafu (workflow), kde jednotlivé uzly představují jednotlivé části procesu generování.</p>
+<hr />
+<h1>Prázdné prostředí</h1>
+<p>Po prvním spuštění se může stát, že je pracovní plocha úplně prázdná.</p>
+<p>V levé části okna se zobrazí pouze informace:</p>
+<pre><code class="language-text">Empty
+
+No workflows found.
+</code></pre>
+<p>To není chyba.</p>
+<p>ComfyUI jednoduše ještě neobsahuje žádný uložený workflow.</p>
+<hr />
+<h1>Kam ukládat workflow</h1>
+<p>Zjistili jsme, že ComfyUI automaticky hledá workflow v adresáři:</p>
+<pre><code class="language-text">/mnt/models/comfyui/user/default/workflows/
+</code></pre>
+<p>Stačilo tedy do tohoto adresáře zkopírovat připravený workflow.</p>
+<p>Po restartu nebo obnovení stránky se workflow okamžitě objevilo v nabídce.</p>
+<p>Nebylo potřeba nic importovat.</p>
+<hr />
+<h1>Načtení workflow</h1>
+<p>Po otevření workflow se zobrazilo několik základních uzlů.</p>
+<p>Typicky:</p>
+<ul>
+<li>Load Checkpoint</li>
+<li>CLIP Text Encode (Positive)</li>
+<li>CLIP Text Encode (Negative)</li>
+<li>Empty Latent Image</li>
+<li>KSampler</li>
+<li>VAE Decode</li>
+<li>Save Image</li>
+</ul>
+<p>To je nejjednodušší použitelný graf pro Stable Diffusion.</p>
+<hr />
+<h1>Výběr modelu</h1>
+<p>V uzlu <strong>Load Checkpoint</strong> jsme vybrali:</p>
+<pre><code class="language-text">DreamShaper_8_pruned
+</code></pre>
+<p>Po výběru modelu ComfyUI automaticky načetlo:</p>
+<ul>
+<li>UNet,</li>
+<li>CLIP,</li>
+<li>VAE.</li>
+</ul>
+<p>Tyto tři části jsou uvnitř checkpointu uloženy společně.</p>
+<hr />
+<h1>Připojení CLIP</h1>
+<p>Jedna z prvních nejasností vznikla u uzlů:</p>
+<pre><code class="language-text">CLIP Text Encode
+</code></pre>
+<p>Ty mají vstup:</p>
+<pre><code class="language-text">clip
+</code></pre>
+<p>Ten je potřeba propojit s výstupem:</p>
+<pre><code class="language-text">CLIP
+</code></pre>
+<p>z uzlu <strong>Load Checkpoint</strong>.</p>
+<p>Je potřeba vytvořit dvě spojení.</p>
+<p>Jedno pro:</p>
+<pre><code class="language-text">Positive Prompt
+</code></pre>
+<p>a druhé pro:</p>
+<pre><code class="language-text">Negative Prompt
+</code></pre>
+<p>Bez tohoto propojení nelze prompt zpracovat.</p>
+<hr />
+<h1>Nastavení promptu</h1>
+<p>Do pozitivního promptu jsme zadali například:</p>
+<pre><code class="language-text">portrait of a medieval knight,
+highly detailed,
+cinematic lighting,
+8k,
+masterpiece
+</code></pre>
+<p>Negativní prompt může být například:</p>
+<pre><code class="language-text">low quality,
+blurry,
+deformed,
+bad anatomy,
+watermark,
+text
+</code></pre>
+<p>Model DreamShaper na podobné prompty reaguje velmi dobře.</p>
+<hr />
+<h1>Nastavení velikosti obrázku</h1>
+<p>V uzlu:</p>
+<pre><code class="language-text">Empty Latent Image
+</code></pre>
+<p>jsme ponechali klasické rozlišení:</p>
+<pre><code class="language-text">512 × 512
+</code></pre>
+<p>To odpovídá Stable Diffusion 1.5.</p>
+<p>Je to zároveň nejrychlejší varianta.</p>
+<hr />
+<h1>Nastavení KSampleru</h1>
+<p>Použili jsme například:</p>
+<p>Sampler:</p>
+<pre><code class="language-text">DPM++ 2M Karras
+</code></pre>
+<p>Počet kroků:</p>
+<pre><code class="language-text">25
+</code></pre>
+<p>CFG Scale:</p>
+<pre><code class="language-text">7
+</code></pre>
+<p>Seed:</p>
+<pre><code class="language-text">Random
+</code></pre>
+<p>Tyto hodnoty představují velmi dobrý výchozí bod.</p>
+<hr />
+<h1>Chyba u Save Image</h1>
+<p>První pokus skončil chybou:</p>
+<pre><code class="language-text">ERROR
+
+Required input is missing
+</code></pre>
+<p>Příčina byla jednoduchá.</p>
+<p>Uzel <strong>Save Image</strong> neměl připojen vstup:</p>
+<pre><code class="language-text">images
+</code></pre>
+<p>Stačilo propojit výstup:</p>
+<pre><code class="language-text">IMAGE
+</code></pre>
+<p>z uzlu <strong>VAE Decode</strong></p>
+<p>na vstup:</p>
+<pre><code class="language-text">images
+</code></pre>
+<p>u <strong>Save Image</strong>.</p>
+<p>Po tomto propojení chyba zmizela.</p>
+<hr />
+<h1>První spuštění</h1>
+<p>Po stisknutí tlačítka:</p>
+<pre><code class="language-text">Queue Prompt
+</code></pre>
+<p>začala Quadro P5000 okamžitě počítat.</p>
+<p>Bylo možné sledovat:</p>
+<pre><code class="language-bash">nvidia-smi
+</code></pre>
+<p>kde vytížení GPU vyskočilo téměř na 100 %.</p>
+<p>To byl jasný důkaz, že celý pipeline běží na CUDA.</p>
+<hr />
+<h1>První obrázky</h1>
+<p>První generování proběhlo bez problémů.</p>
+<p>Během několika desítek sekund vzniklo několik obrázků.</p>
+<p>Výsledek byl překvapivě kvalitní.</p>
+<p>Ukázalo se, že i grafická karta z roku 2017 je stále schopna velmi dobře provozovat Stable Diffusion 1.5.</p>
+<hr />
+<h1>Kam se obrázky ukládají</h1>
+<p>Ve výchozím nastavení ComfyUI ukládá obrázky do:</p>
+<pre><code class="language-text">/mnt/models/comfyui/output/
+</code></pre>
+<p>Každý obrázek dostane automaticky unikátní název.</p>
+<p>Současně se ukládají i metadata.</p>
+<p>To umožňuje pozdější rekonstrukci workflow.</p>
+<hr />
+<h1>Co jsme se během prvního workflow naučili</h1>
+<p>První generování ukázalo několik důležitých věcí.</p>
+<ul>
+<li>ComfyUI není složité.</li>
+<li>Každý uzel má jasně definované vstupy a výstupy.</li>
+<li>Pokud některý vstup chybí, ComfyUI přesně označí problém.</li>
+<li>Workflow lze velmi snadno rozšiřovat.</li>
+</ul>
+<p>Po pochopení několika základních uzlů začíná být práce velmi intuitivní.</p>
+<hr />
+<h1>Výkon Quadro P5000</h1>
+<p>Během testování se ukázalo, že Quadro P5000 je pro Stable Diffusion 1.5 stále velmi dobře použitelná.</p>
+<p>Výhody:</p>
+<ul>
+<li>16 GB VRAM</li>
+<li>dostatek CUDA jader</li>
+<li>stabilní ovladače</li>
+<li>nízká pořizovací cena na trhu s použitým hardwarem</li>
+</ul>
+<p>Nevýhody:</p>
+<ul>
+<li>nepodporuje nejnovější CUDA optimalizace</li>
+<li>nepodporuje Tensor Core</li>
+<li>SDXL již není tak komfortní jako na novějších kartách</li>
+</ul>
+<p>Přesto je pro SD 1.5 výbornou volbou.</p>
+<hr />
+<h1>Shrnutí kapitoly</h1>
+<p>Po dokončení této části jsme úspěšně:</p>
+<ul>
+<li>načetli první workflow,</li>
+<li>vybrali model DreamShaper 8,</li>
+<li>správně propojili všechny uzly,</li>
+<li>odstranili chybu u Save Image,</li>
+<li>spustili první generování,</li>
+<li>ověřili zatížení GPU,</li>
+<li>vytvořili první obrázky.</li>
+</ul>
+<p>Tím byla základní instalace ComfyUI úspěšně dokončena.</p>
+<p>Od této chvíle lze začít experimentovat s dalšími modely, LoRA, ControlNet, upscalery a postupně budovat vlastní knihovnu workflow.</p>
+<h1>8. Doporučené modely pro NVIDIA Pascal (Stable Diffusion 1.5)</h1>
+<p>Po úspěšném zprovoznění ComfyUI přichází nejzajímavější část.</p>
+<p>Výběr modelů.</p>
+<p>Na internetu dnes existují desetitisíce checkpointů.</p>
+<p>Velká část z nich je však pouze drobnou modifikací jiného modelu nebo krátkodobým experimentem.</p>
+<p>Místo nekonečného stahování je mnohem rozumnější postavit si menší, kvalitní knihovnu modelů, které se vzájemně dobře doplňují.</p>
+<p>Přesně takový přístup jsme zvolili i v tomto projektu.</p>
+<hr />
+<h1>Proč začínat se Stable Diffusion 1.5</h1>
+<p>Grafická karta NVIDIA Quadro P5000 disponuje:</p>
+<ul>
+<li>16 GB VRAM,</li>
+<li>architekturou Pascal,</li>
+<li>Compute Capability 6.1.</li>
+</ul>
+<p>To znamená, že bez problémů zvládá Stable Diffusion 1.5.</p>
+<p>Naopak modely SDXL již vyžadují výrazně více výpočetního výkonu.</p>
+<p>Neznamená to, že SDXL nelze používat.</p>
+<p>Pouze nebude tak pohodlný jako na novějších kartách.</p>
+<p>Proto doporučuji nejprve vybudovat kvalitní knihovnu SD 1.5 modelů.</p>
+<p>Jejich kvalita je i po několika letech stále velmi vysoká.</p>
+<hr />
+<h1>Jak modely vybírat</h1>
+<p>Při výběru checkpointů jsem se řídil několika jednoduchými pravidly.</p>
+<p>Model musí být:</p>
+<ul>
+<li>dlouhodobě prověřený komunitou,</li>
+<li>aktivně používaný,</li>
+<li>kvalitně zdokumentovaný,</li>
+<li>dobře fungovat na SD 1.5,</li>
+<li>mít odlišný charakter než ostatní modely.</li>
+</ul>
+<p>Nemá smysl mít deset téměř stejných checkpointů.</p>
+<p>Lepší je mít několik opravdu kvalitních.</p>
+<hr />
+<h1>DreamShaper 8</h1>
+<p>První model, který jsme nainstalovali.</p>
+<p>Charakter:</p>
+<ul>
+<li>univerzální,</li>
+<li>velmi kvalitní,</li>
+<li>rychlý,</li>
+<li>vhodný pro začátečníky.</li>
+</ul>
+<p>Silné stránky:</p>
+<ul>
+<li>fantasy,</li>
+<li>portréty,</li>
+<li>ilustrace,</li>
+<li>concept art,</li>
+<li>digitální malba.</li>
+</ul>
+<p>Je to ideální první model.</p>
+<p>Pokud bych měl doporučit jediný checkpoint pro první měsíc práce s ComfyUI, byl by to právě DreamShaper.</p>
+<hr />
+<h1>Realistic Vision</h1>
+<p>Jeden z nejlepších realistických modelů celé generace SD 1.5.</p>
+<p>Použití:</p>
+<ul>
+<li>fotografie,</li>
+<li>portréty,</li>
+<li>krajiny,</li>
+<li>architektura,</li>
+<li>produktová fotografie.</li>
+</ul>
+<p>Silné stránky:</p>
+<ul>
+<li>přirozené barvy,</li>
+<li>realistická pleť,</li>
+<li>velmi dobré světlo.</li>
+</ul>
+<p>Pokud je cílem fotorealismus, je Realistic Vision téměř povinnou součástí knihovny.</p>
+<hr />
+<h1>Deliberate</h1>
+<p>Legendární univerzální checkpoint.</p>
+<p>Výborně zvládá kombinaci:</p>
+<ul>
+<li>realismu,</li>
+<li>ilustrace,</li>
+<li>fantasy,</li>
+<li>digitálního umění.</li>
+</ul>
+<p>Právě díky této univerzálnosti se stal jedním z nejpoužívanějších modelů celé éry SD 1.5.</p>
+<hr />
+<h1>EpicRealism</h1>
+<p>Další výborný realistický model.</p>
+<p>Ve srovnání s Realistic Vision produkuje často:</p>
+<ul>
+<li>výraznější kontrast,</li>
+<li>dramatičtější světlo,</li>
+<li>filmovější atmosféru.</li>
+</ul>
+<p>Je vhodný zejména pro portréty.</p>
+<hr />
+<h1>AbsoluteReality</h1>
+<p>Velmi kvalitní model zaměřený na realistické fotografie.</p>
+<p>Výhody:</p>
+<ul>
+<li>minimum artefaktů,</li>
+<li>konzistentní výsledky,</li>
+<li>velmi dobrá práce s obličeji.</li>
+</ul>
+<p>Často bývá doporučován jako alternativa k Realistic Vision.</p>
+<hr />
+<h1>Photon</h1>
+<p>Photon patří mezi novější modely SD 1.5.</p>
+<p>Výborně funguje pro:</p>
+<ul>
+<li>produktové fotografie,</li>
+<li>portréty,</li>
+<li>reklamní vizualizace.</li>
+</ul>
+<p>Ve srovnání s DreamShaper produkuje čistší a modernější vzhled.</p>
+<hr />
+<h1>Juggernaut</h1>
+<p>Juggernaut existuje v několika verzích.</p>
+<p>Původně vznikl pro SD 1.5, později přešel na SDXL.</p>
+<p>Starší SD 1.5 verze stále stojí za vyzkoušení.</p>
+<p>Je vhodná zejména pro:</p>
+<ul>
+<li>fantasy,</li>
+<li>koncepty,</li>
+<li>prostředí,</li>
+<li>detailní ilustrace.</li>
+</ul>
+<hr />
+<h1>Co zatím nestahovat</h1>
+<p>Začátečníci často udělají stejnou chybu.</p>
+<p>Stáhnou během jednoho večera:</p>
+<ul>
+<li>150 checkpointů,</li>
+<li>300 LoRA,</li>
+<li>50 VAE.</li>
+</ul>
+<p>Po týdnu už netuší:</p>
+<ul>
+<li>který model použili,</li>
+<li>proč se obrázky liší,</li>
+<li>co vlastně která LoRA dělá.</li>
+</ul>
+<p>Mnohem lepší je postupovat pomalu.</p>
+<p>Nejprve opravdu poznat jeden model.</p>
+<p>Poté přidat druhý.</p>
+<p>Až následně začít experimentovat.</p>
+<hr />
+<h1>Doporučené pořadí instalace</h1>
+<p>Pokud bych dnes stavěl novou knihovnu od nuly, postupoval bych přibližně takto.</p>
+<ol>
+<li>DreamShaper 8</li>
+<li>Realistic Vision</li>
+<li>Deliberate</li>
+<li>EpicRealism</li>
+<li>AbsoluteReality</li>
+<li>Photon</li>
+</ol>
+<p>Tato šestice pokryje naprostou většinu běžných scénářů.</p>
+<hr />
+<h1>Organizace checkpointů</h1>
+<p>Všechny checkpointy ukládáme do:</p>
+<pre><code class="language-text">/mnt/models/ai-models/checkpoints/sd15/
+</code></pre>
+<p>Například:</p>
+<pre><code class="language-text">DreamShaper_8_pruned.safetensors
+
+RealisticVisionV60.safetensors
+
+Deliberate_v6.safetensors
+
+EpicRealism.safetensors
+
+AbsoluteReality.safetensors
+
+Photon.safetensors
+</code></pre>
+<p>Taková knihovna zůstává přehledná i po několika letech.</p>
+<hr />
+<h1>Doporučení z praxe</h1>
+<p>Nejdůležitější poznatek z celého testování je jednoduchý.</p>
+<p>Kvalitu obrázků určuje především:</p>
+<ul>
+<li>správný prompt,</li>
+<li>správně zvolený model,</li>
+<li>zkušenosti uživatele.</li>
+</ul>
+<p>Ne počet checkpointů uložených na disku.</p>
+<p>Je lepší dokonale poznat pět modelů než vlastnit dvě stě modelů, které člověk nikdy nepoužije.</p>
+<hr />
+<h1>Shrnutí kapitoly</h1>
+<p>Pro grafickou kartu NVIDIA Quadro P5000 doporučuji jako základ knihovny následující modely:</p>
+<ul>
+<li>DreamShaper 8</li>
+<li>Realistic Vision</li>
+<li>Deliberate</li>
+<li>EpicRealism</li>
+<li>AbsoluteReality</li>
+<li>Photon</li>
+</ul>
+<p>Všechny jsou postaveny na Stable Diffusion 1.5, mají dlouhodobě výbornou reputaci a poskytují velmi kvalitní výsledky i na starším profesionálním hardwaru.</p>
+<p>Teprve po jejich zvládnutí doporučuji začít experimentovat s SDXL, Flux nebo dalšími modernějšími architekturami.</p>
 
 <p style="margin-top: 2em;"><a href="../index.html">← Zpět na přehled</a></p>
 </body>
