@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>pascalstable – nastavení workstation pro AI</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 2em; line-height: 1.6; }
+    img { max-width: 100%; height: auto; }
+    pre { background: #f4f4f4; padding: 1em; border-radius: 5px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+  </style>
+</head>
+<body>
+<h1>ComfyUI na NVIDIA Quadro P5000 (Pascal) v roce 2026</h1>
+<h2>Kompletní instalace, optimalizace a ověření funkčnosti</h2>
+<p><strong>Autor:</strong> vlastní instalační poznámky</p>
+<p><strong>Verze dokumentu:</strong> 1.0</p>
+<p><strong>Poslední aktualizace:</strong> červenec 2026</p>
+<hr />
+<h1>Úvod</h1>
+<p>Tento dokument vznikl během reálné instalace a konfigurace prostředí pro generování obrázků pomocí <strong>ComfyUI</strong> na pracovní stanici <strong>Lenovo ThinkStation P720</strong> vybavené profesionální grafickou kartou <strong>NVIDIA Quadro P5000</strong>.</p>
+<p>Na internetu lze nalézt velké množství návodů pro ComfyUI, Stable Diffusion i PyTorch. Většina z nich však předpokládá použití nejnovějšího hardware a nejnovějších verzí software. To je vhodné pro moderní grafické karty architektur Turing, Ampere, Ada nebo Blackwell, nikoliv však pro starší profesionální karty řady Pascal.</p>
+<p>Cílem tohoto dokumentu není vytvořit další stručný "how-to", ale podrobně zdokumentovat celý proces instalace, včetně slepých uliček, problémů a důvodů jednotlivých rozhodnutí.</p>
+<p>Výsledkem má být prostředí, které bude:</p>
+<ul>
+<li>stabilní,</li>
+<li>reprodukovatelné,</li>
+<li>snadno obnovitelné,</li>
+<li>dobře zdokumentované,</li>
+<li>použitelné i za několik let.</li>
+</ul>
+<p>Tento dokument proto vysvětluje nejen <strong>co</strong> bylo provedeno, ale především <strong>proč</strong>.</p>
+<hr />
+<h1>Filozofie instalace</h1>
+<p>Během instalace jsme se drželi několika jednoduchých pravidel.</p>
+<h2>1. Stabilita je důležitější než nejnovější verze</h2>
+<p>V oblasti umělé inteligence vznikají nové verze knihoven prakticky každý měsíc. To ale neznamená, že jsou nejlepší volbou pro starší hardware.</p>
+<p>Naopak.</p>
+<p>Vývojáři se pochopitelně soustředí především na nejnovější architektury GPU a některé optimalizace pro starší generace postupně mizí.</p>
+<p>Proto jsme se rozhodli hledat konfiguraci, která:</p>
+<ul>
+<li>využívá GPU naplno,</li>
+<li>je ověřená v praxi,</li>
+<li>nebude vyžadovat neustálé aktualizace.</li>
+</ul>
+<hr />
+<h2>2. Nepoužívat systémový Python</h2>
+<p>Linuxová distribuce obsahuje vlastní Python, který využívají systémové nástroje.</p>
+<p>Jeho nahrazení nebo úprava bývá častým zdrojem problémů.</p>
+<p>Proto jsme použili:</p>
+<ul>
+<li>pyenv</li>
+<li>samostatné virtuální prostředí (venv)</li>
+</ul>
+<p>Díky tomu lze kdykoliv vytvořit další prostředí s jinou verzí Pythonu, aniž by byla ovlivněna funkčnost operačního systému.</p>
+<hr />
+<h2>3. Modely nesmí být svázány s ComfyUI</h2>
+<p>Samotná aplikace ComfyUI se může kdykoliv přeinstalovat nebo nahradit novější verzí.</p>
+<p>Modely však představují největší objem dat.</p>
+<p>Proto jsou uloženy mimo adresář ComfyUI.</p>
+<p>Výhody:</p>
+<ul>
+<li>jedna knihovna modelů pro více instalací,</li>
+<li>snadné zálohování,</li>
+<li>jednoduchá migrace na nový disk,</li>
+<li>možnost používat stejné modely i z jiných aplikací.</li>
+</ul>
+<hr />
+<h2>4. Každý krok musí být ověřitelný</h2>
+<p>Po každé významnější změně jsme ověřovali, že systém stále funguje.</p>
+<p>Nestačí pouze spustit příkaz.</p>
+<p>Je potřeba zkontrolovat například:</p>
+<ul>
+<li>verzi Pythonu,</li>
+<li>verzi PyTorch,</li>
+<li>dostupnost CUDA,</li>
+<li>správně rozpoznanou grafickou kartu,</li>
+<li>Compute Capability,</li>
+<li>skutečné vytížení GPU.</li>
+</ul>
+<p>Díky tomu lze případné problémy odhalit okamžitě.</p>
+<hr />
+<h1>Použitý hardware</h1>
+<p>Instalace byla provedena na následující konfiguraci.</p>
+<h2>Pracovní stanice</h2>
+<p>Lenovo ThinkStation P720</p>
+<p>Jedná se o profesionální pracovní stanici určenou pro CAD, 3D grafiku, simulace a vývoj.</p>
+<p>Díky dvěma procesorovým paticím, ECC pamětem a kvalitnímu chlazení představuje velmi vhodnou platformu i pro lokální provoz AI modelů.</p>
+<hr />
+<h2>Procesory</h2>
+<p>2× Intel Xeon Silver 4210</p>
+<p>Celkem:</p>
+<ul>
+<li>20 fyzických jader</li>
+<li>40 vláken</li>
+</ul>
+<p>Procesory zde nehrají hlavní roli při samotném generování obrázků, ale výrazně pomáhají při:</p>
+<ul>
+<li>načítání modelů,</li>
+<li>kompresi dat,</li>
+<li>práci s více aplikacemi současně,</li>
+<li>provozu dalších služeb (například Ollama nebo Open WebUI).</li>
+</ul>
+<hr />
+<h2>Operační paměť</h2>
+<p>64 GB DDR4 ECC</p>
+<p>Velká systémová paměť umožňuje bez problémů provozovat současně:</p>
+<ul>
+<li>ComfyUI,</li>
+<li>Ollama,</li>
+<li>Docker,</li>
+<li>Open WebUI,</li>
+<li>běžné vývojové nástroje.</li>
+</ul>
+<hr />
+<h2>Grafická karta</h2>
+<p>NVIDIA Quadro P5000</p>
+<p>Parametry:</p>
+<ul>
+<li>architektura Pascal</li>
+<li>Compute Capability 6.1</li>
+<li>16 GB GDDR5X</li>
+<li>profesionální ovladače</li>
+<li>velmi nízká spotřeba v klidu</li>
+</ul>
+<p>Přestože byla představena již v roce 2016, stále nabízí dostatek výkonu pro modely Stable Diffusion 1.5 a řadu dalších AI úloh.</p>
+<p>Právě této kartě je věnována většina tohoto dokumentu.</p>
+<hr />
+<h1>Použitý software</h1>
+<p>Operační systém:</p>
+<ul>
+<li>Kubuntu 26.04 LTS</li>
+</ul>
+<p>Python:</p>
+<ul>
+<li>Python 3.12.13</li>
+</ul>
+<p>Správa verzí Pythonu:</p>
+<ul>
+<li>pyenv</li>
+</ul>
+<p>Virtuální prostředí:</p>
+<ul>
+<li>venv</li>
+</ul>
+<p>PyTorch:</p>
+<ul>
+<li>2.4.1 + CUDA 12.1</li>
+</ul>
+<p>ComfyUI:</p>
+<ul>
+<li>0.27.0</li>
+</ul>
+<p>GPU:</p>
+<ul>
+<li>NVIDIA Quadro P5000</li>
+</ul>
+<p>CUDA Runtime:</p>
+<ul>
+<li>13.0</li>
+</ul>
+<p>NVIDIA Driver:</p>
+<ul>
+<li>580.159.03</li>
+</ul>
+<hr />
+<h1>Co se čtenář v tomto dokumentu dozví</h1>
+<p>V následujících kapitolách bude krok za krokem popsáno:</p>
+<ul>
+<li>proč nebyl použit Python 3.14,</li>
+<li>proč nebyl použit nejnovější PyTorch,</li>
+<li>jak ověřit skutečnou podporu CUDA,</li>
+<li>jak vytvořit stabilní virtuální prostředí,</li>
+<li>jak správně nainstalovat ComfyUI,</li>
+<li>jak organizovat modely mimo adresář aplikace,</li>
+<li>jak vytvořit první workflow,</li>
+<li>jak ověřit, že GPU skutečně pracuje,</li>
+<li>jaké modely jsou pro Quadro P5000 nejvhodnější,</li>
+<li>jak zabránit tomu, aby budoucí aktualizace funkční prostředí poškodily.</li>
+</ul>
+<p>Cílem není pouze zprovoznit ComfyUI, ale vytvořit prostředí, které bude spolehlivě fungovat i po několika letech.</p>
+
+<p style="margin-top: 2em;"><a href="../index.html">← Zpět na přehled</a></p>
+</body>
+</html>
