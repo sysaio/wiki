@@ -181,6 +181,658 @@
 <li>jak zabránit tomu, aby budoucí aktualizace funkční prostředí poškodily.</li>
 </ul>
 <p>Cílem není pouze zprovoznit ComfyUI, ale vytvořit prostředí, které bude spolehlivě fungovat i po několika letech.</p>
+<h1>2. Hledání správné kombinace Pythonu, CUDA a PyTorch</h1>
+<p>Na první pohled se může zdát, že instalace prostředí pro ComfyUI je jednoduchá.</p>
+<p>Stačí nainstalovat:</p>
+<ul>
+<li>nejnovější Python,</li>
+<li>nejnovější PyTorch,</li>
+<li>nejnovější CUDA,</li>
+<li>ComfyUI.</li>
+</ul>
+<p>V případě moderních grafických karet architektury Ada nebo Blackwell to bývá většinou správný postup.</p>
+<p>U starší profesionální karty NVIDIA Quadro P5000 však tento přístup vedl k několika problémům.</p>
+<p>Tato kapitola popisuje celý proces rozhodování.</p>
+<hr />
+<h1>První pokus – nejnovější dostupné verze</h1>
+<p>Původní konfigurace byla postavena na nejnovějších dostupných verzích.</p>
+<p>Použit byl:</p>
+<ul>
+<li>Python 3.14</li>
+<li>PyTorch 2.13</li>
+<li>CUDA 13 wheels</li>
+</ul>
+<p>Instalace proběhla bez problémů.</p>
+<p>ComfyUI se spustilo.</p>
+<p>GPU bylo rozpoznáno.</p>
+<p>Na první pohled vše vypadalo správně.</p>
+<p>Ověření:</p>
+<pre><code class="language-bash">python -c &quot;import torch; print(torch.cuda.is_available())&quot;
+</code></pre>
+<p>Výstup:</p>
+<pre><code class="language-text">True
+</code></pre>
+<p>Také název grafické karty byl správný.</p>
+<pre><code class="language-bash">python -c &quot;import torch; print(torch.cuda.get_device_name(0))&quot;
+</code></pre>
+<p>Výstup:</p>
+<pre><code class="language-text">Quadro P5000
+</code></pre>
+<p>Ani zde nebyl žádný problém.</p>
+<p>Další kontrola:</p>
+<pre><code class="language-bash">python -c &quot;import torch; print(torch.cuda.get_device_capability())&quot;
+</code></pre>
+<p>Výstup:</p>
+<pre><code class="language-text">(6, 1)
+</code></pre>
+<p>Compute Capability byla rozpoznána správně.</p>
+<p>Zdálo se tedy, že vše funguje.</p>
+<hr />
+<h1>Proč to ještě neznamená správnou akceleraci</h1>
+<p>Mnoho návodů na internetu končí právě zde.</p>
+<p>Pokud:</p>
+<ul>
+<li><code>torch.cuda.is_available()</code> vrátí <code>True</code>,</li>
+<li>GPU je rozpoznáno,</li>
+<li>ComfyUI se spustí,</li>
+</ul>
+<p>považují instalaci za hotovou.</p>
+<p>To však nemusí znamenat, že PyTorch skutečně obsahuje optimalizované CUDA kernely pro konkrétní architekturu GPU.</p>
+<p>Rozhodující je ještě jeden příkaz.</p>
+<pre><code class="language-bash">python -c &quot;import torch; print(torch.cuda.get_arch_list())&quot;
+</code></pre>
+<p>Výsledek byl následující:</p>
+<pre><code class="language-text">[
+ 'sm_50',
+ 'sm_60',
+ 'sm_70',
+ 'sm_75',
+ 'sm_80',
+ 'sm_86',
+ 'sm_90'
+]
+</code></pre>
+<p>Na první pohled není zřejmé, co tento seznam znamená.</p>
+<p>Ve skutečnosti jde o seznam architektur GPU, pro které byl PyTorch zkompilován.</p>
+<p>A právě zde se objevil problém.</p>
+<hr />
+<h1>Chybějící SM 6.1</h1>
+<p>Quadro P5000 používá architekturu:</p>
+<pre><code class="language-text">SM 6.1
+</code></pre>
+<p>V seznamu však byla pouze:</p>
+<pre><code class="language-text">sm_60
+</code></pre>
+<p>a poté až</p>
+<pre><code class="language-text">sm_70
+</code></pre>
+<p>Architektura <strong>SM61 chyběla</strong>.</p>
+<p>To znamenalo, že PyTorch již neobsahuje nativně zkompilované CUDA kernely optimalizované právě pro Pascal.</p>
+<p>GPU sice fungovalo.</p>
+<p>Výpočty probíhaly na CUDA.</p>
+<p>Ale část optimalizací již nebyla k dispozici.</p>
+<p>Právě zde padlo první důležité rozhodnutí.</p>
+<hr />
+<h1>Hledání vhodnější konfigurace</h1>
+<p>Existovaly dvě možnosti.</p>
+<h2>Varianta A</h2>
+<p>Používat nejnovější PyTorch.</p>
+<p>Výhody:</p>
+<ul>
+<li>nejnovější funkce</li>
+<li>dlouhodobá podpora</li>
+</ul>
+<p>Nevýhody:</p>
+<ul>
+<li>chybějící optimalizace pro Pascal</li>
+<li>potenciálně nižší výkon</li>
+<li>riziko dalších změn v budoucích verzích</li>
+</ul>
+<hr />
+<h2>Varianta B</h2>
+<p>Vrátit se k poslední stabilní verzi PyTorch, která byla vytvořena ještě v době plné podpory Pascal.</p>
+<p>Výhody:</p>
+<ul>
+<li>ověřená kompatibilita</li>
+<li>stabilní CUDA kernels</li>
+<li>výborná podpora Stable Diffusion 1.5</li>
+</ul>
+<p>Nevýhody:</p>
+<ul>
+<li>chybí některé nejnovější experimentální funkce</li>
+</ul>
+<p>Protože cílem projektu byla především stabilita, byla zvolena právě tato cesta.</p>
+<hr />
+<h1>Proč jsme nepoužili Python 3.14</h1>
+<p>Další komplikace se objevila při pokusu o instalaci staršího PyTorch.</p>
+<p>Při použití Pythonu 3.14 se ukázalo, že požadované binární balíčky (wheel) pro některé kombinace verzí jednoduše neexistují.</p>
+<p>Například:</p>
+<pre><code class="language-bash">pip install torch==2.4.1
+</code></pre>
+<p>nebylo možné úspěšně dokončit.</p>
+<p>Nešlo o chybu instalace.</p>
+<p>Wheel pro danou kombinaci Pythonu a CUDA nebyl vůbec vydán.</p>
+<p>To je poměrně častý problém u velmi nových verzí Pythonu.</p>
+<p>Nové interpretry bývají podporovány až s odstupem několika měsíců.</p>
+<hr />
+<h1>Přechod na Python 3.12</h1>
+<p>Po zvážení všech možností padlo rozhodnutí přejít na Python 3.12.</p>
+<p>Důvodů bylo několik.</p>
+<p>Python 3.12 představuje v současnosti jednu z nejlépe podporovaných verzí pro oblast strojového učení.</p>
+<p>Je podporován:</p>
+<ul>
+<li>PyTorch</li>
+<li>ComfyUI</li>
+<li>Hugging Face</li>
+<li>Diffusers</li>
+<li>xFormers</li>
+<li>většinou AI knihoven</li>
+</ul>
+<p>Současně je dostatečně nový a přitom velmi stabilní.</p>
+<p>Použitá verze:</p>
+<pre><code class="language-text">Python 3.12.13
+</code></pre>
+<hr />
+<h1>Proč pyenv</h1>
+<p>Dalším rozhodnutím bylo nepoužívat systémový Python.</p>
+<p>Linux distribuce využívá vlastní Python pro řadu systémových nástrojů.</p>
+<p>Jeho nahrazení může způsobit obtížně hledatelné problémy.</p>
+<p>Proto byl použit:</p>
+<pre><code class="language-text">pyenv
+</code></pre>
+<p>Výhody tohoto řešení:</p>
+<ul>
+<li>žádný zásah do systému,</li>
+<li>možnost mít více verzí Pythonu současně,</li>
+<li>jednoduché vytváření nových prostředí,</li>
+<li>snadná obnova po reinstalaci.</li>
+</ul>
+<p>Díky tomu lze mít například:</p>
+<pre><code class="language-text">Python 3.10
+Python 3.12
+Python 3.13
+Python 3.14
+</code></pre>
+<p>vedle sebe bez jakéhokoliv konfliktu.</p>
+<hr />
+<h1>Vytvoření samostatného virtuálního prostředí</h1>
+<p>Jakmile byl nainstalován Python 3.12, vzniklo nové virtuální prostředí.</p>
+<p>To má několik výhod.</p>
+<p>Každý projekt může používat vlastní:</p>
+<ul>
+<li>Python,</li>
+<li>PyTorch,</li>
+<li>knihovny,</li>
+<li>závislosti.</li>
+</ul>
+<p>Žádná změna se nedotkne ostatních projektů.</p>
+<p>Použité umístění:</p>
+<pre><code class="language-text">/mnt/models/envs/comfyui312
+</code></pre>
+<p>Název byl zvolen záměrně.</p>
+<p>Za několik let bude z názvu okamžitě patrné, že jde o prostředí založené na Pythonu 3.12.</p>
+<hr />
+<h1>Výběr finální konfigurace</h1>
+<p>Po několika testech byla jako nejvhodnější zvolena následující kombinace.</p>
+<table>
+<thead>
+<tr>
+<th>Komponenta</th>
+<th>Verze</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python</td>
+<td>3.12.13</td>
+</tr>
+<tr>
+<td>PyTorch</td>
+<td>2.4.1</td>
+</tr>
+<tr>
+<td>TorchVision</td>
+<td>0.19.1</td>
+</tr>
+<tr>
+<td>TorchAudio</td>
+<td>2.4.1</td>
+</tr>
+<tr>
+<td>CUDA Wheels</td>
+<td>cu121</td>
+</tr>
+<tr>
+<td>GPU</td>
+<td>NVIDIA Quadro P5000</td>
+</tr>
+<tr>
+<td>Compute Capability</td>
+<td>6.1</td>
+</tr>
+</tbody>
+</table>
+<p>Právě tato konfigurace byla následně použita pro všechny další kroky dokumentace.</p>
+<hr />
+<h1>Závěr kapitoly</h1>
+<p>Nejdůležitější poznatek z této části instalace je jednoduchý.</p>
+<p>Skutečnost, že:</p>
+<ul>
+<li>GPU je detekováno,</li>
+<li>CUDA je dostupná,</li>
+<li>ComfyUI se spustí,</li>
+</ul>
+<p>ještě neznamená, že používáme optimální konfiguraci.</p>
+<p>Vyplatí se věnovat několik desítek minut ověření kompatibility jednotlivých verzí.</p>
+<p>V našem případě vedla změna z Pythonu 3.14 na Python 3.12 a přechod na PyTorch 2.4.1 k prostředí, které je stabilní, dobře podporované a vhodné právě pro architekturu NVIDIA Pascal.</p>
+<h1>3. Instalace Pythonu pomocí pyenv a vytvoření izolovaného prostředí</h1>
+<p>V předchozí kapitole jsme si vysvětlili, proč jsme se rozhodli nepoužít systémový Python a proč jsme zvolili Python 3.12.</p>
+<p>V této kapitole projdeme kompletní vytvoření prostředí, které bude sloužit pouze pro ComfyUI.</p>
+<p>Výsledkem bude zcela izolovaná instalace, která nebude nijak zasahovat do operačního systému.</p>
+<hr />
+<h1>Proč nepoužívat systémový Python</h1>
+<p>Na většině linuxových distribucí je Python používán nejen uživatelem, ale i samotným systémem.</p>
+<p>Používají jej například:</p>
+<ul>
+<li>správce balíčků,</li>
+<li>některé grafické nástroje,</li>
+<li>systémové utility,</li>
+<li>různé služby běžící na pozadí.</li>
+</ul>
+<p>Instalace nebo aktualizace knihoven přímo do systémového Pythonu může vést ke konfliktům.</p>
+<p>Moderní distribuce (včetně Ubuntu a Kubuntu) proto používají mechanismus PEP 668, který instalaci balíčků do systémového prostředí přímo blokuje.</p>
+<p>Pokud se pokusíme použít systémový <code>pip</code>, můžeme narazit například na chybu:</p>
+<pre><code class="language-text">error: externally-managed-environment
+</code></pre>
+<p>To není chyba Pythonu.</p>
+<p>Naopak.</p>
+<p>Operační systém tím chrání vlastní instalaci.</p>
+<hr />
+<h1>Proč právě pyenv</h1>
+<p>Existuje několik možností, jak používat více verzí Pythonu.</p>
+<p>Nejčastější jsou:</p>
+<ul>
+<li>systémový Python,</li>
+<li>Docker,</li>
+<li>Conda,</li>
+<li>pyenv.</li>
+</ul>
+<p>Pro tento projekt byl zvolen <strong>pyenv</strong>.</p>
+<p>Hlavní důvody:</p>
+<ul>
+<li>nezasahuje do systému,</li>
+<li>umožňuje mít více verzí Pythonu současně,</li>
+<li>je jednoduchý,</li>
+<li>používá jej velká část vývojářské komunity.</li>
+</ul>
+<p>Například lze mít současně:</p>
+<pre><code class="language-text">Python 3.10
+Python 3.11
+Python 3.12
+Python 3.13
+Python 3.14
+</code></pre>
+<p>Každý projekt si pak vybere vlastní interpret.</p>
+<hr />
+<h1>Ověření instalace pyenv</h1>
+<p>Nejprve ověříme, že je pyenv skutečně nainstalován.</p>
+<pre><code class="language-bash">pyenv --version
+</code></pre>
+<p>Příklad výstupu:</p>
+<pre><code class="language-text">pyenv 2.7.3
+</code></pre>
+<p>Pokud se zobrazí číslo verze, je vše v pořádku.</p>
+<hr />
+<h1>Zobrazení dostupných verzí Pythonu</h1>
+<p>Před instalací lze vypsat všechny podporované verze.</p>
+<pre><code class="language-bash">pyenv install --list | grep &quot;3.12&quot;
+</code></pre>
+<p>V době vzniku tohoto dokumentu byl výstup například:</p>
+<pre><code class="language-text">3.12.0
+3.12.1
+...
+3.12.13
+</code></pre>
+<p>Použita byla poslední dostupná stabilní verze.</p>
+<hr />
+<h1>Instalace Pythonu 3.12</h1>
+<p>Samotná instalace:</p>
+<pre><code class="language-bash">pyenv install 3.12.13
+</code></pre>
+<p>Kompilace může podle výkonu procesoru trvat několik minut.</p>
+<p>Po dokončení se zobrazí přibližně:</p>
+<pre><code class="language-text">Installed Python-3.12.13
+</code></pre>
+<hr />
+<h1>Ověření umístění interpretru</h1>
+<p>Nově nainstalovaný Python se nachází přibližně zde:</p>
+<pre><code class="language-text">~/.pyenv/versions/3.12.13/
+</code></pre>
+<p>Konkrétně interpreter:</p>
+<pre><code class="language-text">~/.pyenv/versions/3.12.13/bin/python
+</code></pre>
+<p>To znamená, že nebyl přepsán systémový Python.</p>
+<hr />
+<h1>Vytvoření adresáře pro virtuální prostředí</h1>
+<p>V tomto projektu jsme se rozhodli ukládat virtuální prostředí mimo domovský adresář.</p>
+<p>Použité umístění:</p>
+<pre><code class="language-text">/mnt/models/envs/
+</code></pre>
+<p>Vytvoření adresáře:</p>
+<pre><code class="language-bash">mkdir -p /mnt/models/envs
+</code></pre>
+<p>Parametr <code>-p</code> zajistí vytvoření adresáře pouze tehdy, pokud ještě neexistuje.</p>
+<hr />
+<h1>Vytvoření virtuálního prostředí</h1>
+<p>Použijeme interpreter nainstalovaný pomocí pyenv.</p>
+<pre><code class="language-bash">~/.pyenv/versions/3.12.13/bin/python \
+    -m venv \
+    /mnt/models/envs/comfyui312
+</code></pre>
+<p>Po dokončení vznikne kompletní izolované prostředí.</p>
+<hr />
+<h1>Aktivace prostředí</h1>
+<pre><code class="language-bash">source /mnt/models/envs/comfyui312/bin/activate
+</code></pre>
+<p>Prompt shellu se obvykle změní například na:</p>
+<pre><code class="language-text">(comfyui312)
+</code></pre>
+<p>Od této chvíle budou všechny instalované balíčky uloženy pouze do tohoto prostředí.</p>
+<hr />
+<h1>Kontrola použitého Pythonu</h1>
+<p>Nejdůležitější kontrola.</p>
+<pre><code class="language-bash">python --version
+</code></pre>
+<p>Očekávaný výstup:</p>
+<pre><code class="language-text">Python 3.12.13
+</code></pre>
+<p>Dále ověříme cestu k interpreteru.</p>
+<pre><code class="language-bash">which python
+</code></pre>
+<p>Správný výstup:</p>
+<pre><code class="language-text">/mnt/models/envs/comfyui312/bin/python
+</code></pre>
+<p>Pokud se zobrazí například:</p>
+<pre><code class="language-text">/usr/bin/python
+</code></pre>
+<p>pak prostředí není aktivní.</p>
+<hr />
+<h1>Kontrola pip</h1>
+<p>Stejně důležité je ověřit i správný <code>pip</code>.</p>
+<pre><code class="language-bash">which pip
+</code></pre>
+<p>Správný výstup:</p>
+<pre><code class="language-text">/mnt/models/envs/comfyui312/bin/pip
+</code></pre>
+<p>Pokud se zobrazí systémový <code>pip</code>, instalace balíčků nebude probíhat do virtuálního prostředí.</p>
+<hr />
+<h1>Doporučený způsob práce</h1>
+<p>Před každou prací s ComfyUI doporučuji provést pouze tři příkazy.</p>
+<pre><code class="language-bash">source /mnt/models/envs/comfyui312/bin/activate
+
+cd /mnt/models/comfyui
+
+python main.py
+</code></pre>
+<p>Tím máme jistotu, že:</p>
+<ul>
+<li>používáme správný Python,</li>
+<li>používáme správný PyTorch,</li>
+<li>používáme správné knihovny,</li>
+<li>nedochází ke konfliktu se systémem.</li>
+</ul>
+<hr />
+<h1>Ověření funkčnosti prostředí</h1>
+<p>Po vytvoření prostředí doporučuji vždy provést následující kontroly.</p>
+<p>Verze Pythonu:</p>
+<pre><code class="language-bash">python --version
+</code></pre>
+<p>Interpreter:</p>
+<pre><code class="language-bash">which python
+</code></pre>
+<p>Pip:</p>
+<pre><code class="language-bash">which pip
+</code></pre>
+<p>Pokud všechny tři příkazy ukazují do adresáře:</p>
+<pre><code class="language-text">/mnt/models/envs/comfyui312/
+</code></pre>
+<p>je prostředí připraveno.</p>
+<hr />
+<h1>Poznámka k budoucím projektům</h1>
+<p>Velkou výhodou tohoto přístupu je možnost vytvořit další prostředí během několika minut.</p>
+<p>Například:</p>
+<pre><code class="language-text">/mnt/models/envs/comfyui312
+/mnt/models/envs/fooocus312
+/mnt/models/envs/sdnext312
+/mnt/models/envs/test313
+</code></pre>
+<p>Každé z nich může obsahovat jinou verzi Pythonu nebo jinou verzi PyTorch.</p>
+<p>Projekty se navzájem nijak neovlivňují.</p>
+<p>Právě tato izolace je jedním z hlavních důvodů, proč je kombinace <strong>pyenv + venv</strong> dnes považována za jeden z nejčistších způsobů práce s Pythonem na Linuxu.</p>
+<hr />
+<h1>Shrnutí kapitoly</h1>
+<p>V této kapitole jsme:</p>
+<ul>
+<li>nainstalovali Python 3.12 pomocí pyenv,</li>
+<li>vytvořili samostatné virtuální prostředí,</li>
+<li>ověřili správnou aktivaci prostředí,</li>
+<li>zkontrolovali interpreter Pythonu,</li>
+<li>zkontrolovali správný <code>pip</code>.</li>
+</ul>
+<p>Nyní máme připravený základ pro instalaci PyTorch a všech dalších knihoven, aniž bychom jakkoliv zasáhli do systémové instalace Linuxu.</p>
+<h1>4. Instalace PyTorch 2.4.1 a ověření CUDA akcelerace</h1>
+<p>Po vytvoření virtuálního prostředí bylo potřeba nainstalovat samotný PyTorch.</p>
+<p>Na první pohled se může zdát, že stačí použít příkaz:</p>
+<pre><code class="language-bash">pip install torch
+</code></pre>
+<p>V našem případě by to ale byla chyba.</p>
+<p>Cílem nebylo získat nejnovější verzi, ale poslední stabilní kombinaci, která stále dobře podporuje grafické karty architektury Pascal.</p>
+<hr />
+<h1>Proč právě PyTorch 2.4.1</h1>
+<p>Po několika testech jsme skončili u následující kombinace:</p>
+<table>
+<thead>
+<tr>
+<th>Komponenta</th>
+<th>Verze</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python</td>
+<td>3.12.13</td>
+</tr>
+<tr>
+<td>PyTorch</td>
+<td>2.4.1</td>
+</tr>
+<tr>
+<td>TorchVision</td>
+<td>0.19.1</td>
+</tr>
+<tr>
+<td>TorchAudio</td>
+<td>2.4.1</td>
+</tr>
+<tr>
+<td>CUDA Wheels</td>
+<td>cu121</td>
+</tr>
+</tbody>
+</table>
+<p>Tato kombinace se ukázala jako nejstabilnější.</p>
+<p>Novější verze PyTorch sice fungovaly, ale již neobsahovaly plnou podporu architektury Pascal a při spuštění ComfyUI se objevovala upozornění typu:</p>
+<pre><code class="language-text">WARNING: You need pytorch with cu130 or higher to use optimized CUDA operations.
+</code></pre>
+<p>To není kritická chyba.</p>
+<p>Pouze informace, že některé novější optimalizace již naše karta využívat nebude.</p>
+<p>Pro Stable Diffusion 1.5 to však nepředstavuje praktický problém.</p>
+<hr />
+<h1>Instalace</h1>
+<p>Nejprve aktivujeme virtuální prostředí.</p>
+<pre><code class="language-bash">source /mnt/models/envs/comfyui312/bin/activate
+</code></pre>
+<p>Poté provedeme instalaci.</p>
+<pre><code class="language-bash">pip install \
+    torch==2.4.1 \
+    torchvision==0.19.1 \
+    torchaudio==2.4.1 \
+    --index-url https://download.pytorch.org/whl/cu121
+</code></pre>
+<p>Použití oficiálního PyTorch indexu zajistí instalaci balíčků obsahujících podporu CUDA.</p>
+<hr />
+<h1>Kontrola nainstalovaných balíčků</h1>
+<p>Po dokončení doporučuji vždy ověřit skutečně nainstalované verze.</p>
+<pre><code class="language-bash">pip list | grep -E &quot;torch|vision|audio&quot;
+</code></pre>
+<p>Výstup:</p>
+<pre><code class="language-text">torch          2.4.1+cu121
+torchaudio     2.4.1+cu121
+torchvision    0.19.1+cu121
+</code></pre>
+<p>Přípona <code>+cu121</code> potvrzuje, že nejde o CPU variantu.</p>
+<hr />
+<h1>Ověření verze PyTorch</h1>
+<pre><code class="language-bash">python -c &quot;import torch; print(torch.__version__)&quot;
+</code></pre>
+<p>Výstup:</p>
+<pre><code class="language-text">2.4.1+cu121
+</code></pre>
+<hr />
+<h1>Ověření dostupnosti CUDA</h1>
+<pre><code class="language-bash">python -c &quot;import torch; print(torch.cuda.is_available())&quot;
+</code></pre>
+<p>Výstup:</p>
+<pre><code class="language-text">True
+</code></pre>
+<p>Pokud by se zobrazilo:</p>
+<pre><code class="language-text">False
+</code></pre>
+<p>PyTorch GPU nevidí.</p>
+<p>V takovém případě nemá smysl pokračovat dál, dokud není problém odstraněn.</p>
+<hr />
+<h1>Ověření grafické karty</h1>
+<pre><code class="language-bash">python -c &quot;import torch; print(torch.cuda.get_device_name(0))&quot;
+</code></pre>
+<p>Výstup:</p>
+<pre><code class="language-text">Quadro P5000
+</code></pre>
+<p>To potvrzuje, že CUDA komunikuje se správným hardwarem.</p>
+<hr />
+<h1>Ověření Compute Capability</h1>
+<p>Dalším krokem bylo ověřit architekturu GPU.</p>
+<pre><code class="language-bash">python -c &quot;import torch; print(torch.cuda.get_device_capability())&quot;
+</code></pre>
+<p>Výstup:</p>
+<pre><code class="language-text">(6, 1)
+</code></pre>
+<p>To odpovídá architektuře Pascal (SM 6.1).</p>
+<hr />
+<h1>Ověření podporovaných architektur</h1>
+<p>Nakonec jsme zkontrolovali, pro které architektury byl PyTorch zkompilován.</p>
+<pre><code class="language-bash">python -c &quot;import torch; print(torch.cuda.get_arch_list())&quot;
+</code></pre>
+<p>Výstup:</p>
+<pre><code class="language-text">['sm_50',
+ 'sm_60',
+ 'sm_70',
+ 'sm_75',
+ 'sm_80',
+ 'sm_86',
+ 'sm_90']
+</code></pre>
+<p>Právě zde jsme zjistili, že novější build již explicitně neobsahuje <code>sm_61</code>.</p>
+<p>To byl jeden z hlavních důvodů, proč jsme se rozhodli zůstat u této ověřené konfigurace místo neustálého honění nejnovějších verzí.</p>
+<hr />
+<h1>Praktický benchmark GPU</h1>
+<p>Samotná detekce GPU ještě neznamená, že GPU opravdu pracuje naplno.</p>
+<p>Proto jsme provedli jednoduchý výpočet matic.</p>
+<pre><code class="language-python">import torch
+import time
+
+device = &quot;cuda&quot;
+
+a = torch.randn((4096,4096), device=device)
+b = torch.randn((4096,4096), device=device)
+
+torch.cuda.synchronize()
+
+t0 = time.time()
+
+for _ in range(20):
+    c = torch.matmul(a, b)
+
+torch.cuda.synchronize()
+
+print(f&quot;Elapsed: {time.time()-t0:.3f} s&quot;)
+</code></pre>
+<p>Výsledky se pohybovaly přibližně kolem:</p>
+<pre><code class="language-text">Elapsed: 0.42 s
+</code></pre>
+<p>To samo o sobě není důležité.</p>
+<p>Důležité bylo sledovat během testu využití GPU.</p>
+<hr />
+<h1>Dlouhý benchmark</h1>
+<p>Krátký benchmark trvá méně než sekundu.</p>
+<p>GPU proto často ani nestihne zobrazit vysoké vytížení.</p>
+<p>Proto jsme připravili delší variantu.</p>
+<pre><code class="language-python">import torch
+import time
+
+device = &quot;cuda&quot;
+
+a = torch.randn((4096,4096), device=device)
+b = torch.randn((4096,4096), device=device)
+
+torch.cuda.synchronize()
+
+t0 = time.time()
+
+iterations = 600
+
+for _ in range(iterations):
+    c = torch.matmul(a, b)
+
+torch.cuda.synchronize()
+
+elapsed = time.time() - t0
+
+print(f&quot;Elapsed: {elapsed:.2f} s&quot;)
+print(f&quot;Iterations: {iterations}&quot;)
+print(f&quot;{iterations/elapsed:.2f} matmul/s&quot;)
+</code></pre>
+<p>Během tohoto testu bylo možné sledovat například pomocí:</p>
+<pre><code class="language-bash">nvidia-smi
+</code></pre>
+<p>že vytížení GPU vyskočilo téměř okamžitě na 100 %.</p>
+<p>To byl nejlepší důkaz, že výpočty skutečně probíhají na grafické kartě.</p>
+<hr />
+<h1>Proč benchmark vůbec dělat</h1>
+<p>Řada uživatelů skončí u informace:</p>
+<pre><code class="language-text">CUDA available: True
+</code></pre>
+<p>To však nestačí.</p>
+<p>Teprve skutečný výpočet ukáže:</p>
+<ul>
+<li>že GPU opravdu počítá,</li>
+<li>že nejsme omylem na CPU,</li>
+<li>že nejsou problémy s ovladači,</li>
+<li>že výkon odpovídá očekávání.</li>
+</ul>
+<p>Je to jednoduchý test, který zabere několik sekund a může ušetřit hodiny hledání chyb.</p>
+<hr />
+<h1>Shrnutí kapitoly</h1>
+<p>Po dokončení této části jsme měli ověřeno:</p>
+<ul>
+<li>správnou verzi PyTorch,</li>
+<li>správnou verzi CUDA,</li>
+<li>funkční GPU,</li>
+<li>správně rozpoznanou Quadro P5000,</li>
+<li>Compute Capability 6.1,</li>
+<li>úspěšné provádění výpočtů na GPU,</li>
+<li>reálné vytížení grafické karty během benchmarku.</li>
+</ul>
+<p>Tím bylo prostředí připraveno pro samotnou instalaci a spuštění ComfyUI.</p>
 
 <p style="margin-top: 2em;"><a href="../index.html">← Zpět na přehled</a></p>
 </body>
