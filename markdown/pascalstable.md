@@ -2490,3 +2490,539 @@ Pro grafickou kartu NVIDIA Quadro P5000 doporučuji jako základ knihovny násle
 Všechny jsou postaveny na Stable Diffusion 1.5, mají dlouhodobě výbornou reputaci a poskytují velmi kvalitní výsledky i na starším profesionálním hardwaru.
 
 Teprve po jejich zvládnutí doporučuji začít experimentovat s SDXL, Flux nebo dalšími modernějšími architekturami.
+
+# 9. Stabilita před novinkami – proč jsme zvolili právě tuto konfiguraci
+
+Během celé instalace jsme se několikrát rozhodovali, zda použít nejnovější dostupné verze jednotlivých komponent, nebo zvolit ověřené a stabilní řešení.
+
+Nakonec zvítězila druhá možnost.
+
+Cílem tohoto projektu nebylo mít nejnovější software za každou cenu, ale vytvořit prostředí, které bude spolehlivě fungovat i za několik měsíců nebo let.
+
+---
+
+# Proč jsme nepoužili systémový Python
+
+Moderní distribuce Linuxu (v našem případě Arch Linux) dnes obsahují velmi nové verze Pythonu.
+
+V době instalace byl systémový Python již ve verzi 3.14.
+
+To však přineslo několik problémů.
+
+Především:
+
+- některé balíčky ještě Python 3.14 oficiálně nepodporovaly,
+- PyTorch nebyl pro tuto verzi připraven,
+- objevovala se omezení související s PEP 668 (externally managed environment).
+
+Instalovat balíčky přímo do systémového Pythonu by navíc znamenalo zasahovat do prostředí operačního systému.
+
+To jsme nechtěli.
+
+---
+
+# Proč pyenv
+
+Místo systémového Pythonu jsme použili pyenv.
+
+Výhody tohoto řešení jsou zásadní.
+
+Python se instaluje pouze do domovského adresáře uživatele.
+
+Nezasahuje do systému.
+
+Lze současně používat více verzí Pythonu.
+
+Například:
+
+```text
+3.10
+
+3.11
+
+3.12
+
+3.13
+```
+
+Každý projekt si může vybrat vlastní interpreter.
+
+To výrazně usnadňuje správu prostředí.
+
+---
+
+# Proč Python 3.12.13
+
+Po několika pokusech jsme zvolili:
+
+```text
+Python 3.12.13
+```
+
+Důvody byly jednoduché.
+
+Jedná se o:
+
+- stabilní řadu,
+- dlouhodobě podporovanou verzi,
+- výborně podporovanou PyTorch,
+- bezproblémově fungující s ComfyUI.
+
+Python 3.12 je dnes považován za bezpečnou volbu pro většinu AI projektů.
+
+---
+
+# Virtuální prostředí
+
+Nad pyenv jsme vytvořili vlastní virtual environment.
+
+Umístění:
+
+```text
+/mnt/models/envs/comfyui312
+```
+
+To přináší další výhodu.
+
+Celé prostředí lze kdykoliv odstranit jediným příkazem:
+
+```bash
+rm -rf /mnt/models/envs/comfyui312
+```
+
+Operační systém tím vůbec neutrpí.
+
+Stačí vytvořit nové prostředí a znovu nainstalovat potřebné balíčky.
+
+---
+
+# Proč jsme nepoužili nejnovější PyTorch
+
+Na první pohled by se mohlo zdát logické nainstalovat nejnovější PyTorch.
+
+To jsme však vědomě neudělali.
+
+Důvodem byla architektura Pascal.
+
+Naše Quadro P5000 používá Compute Capability 6.1.
+
+Novější verze PyTorch se stále více zaměřují na moderní architektury:
+
+- Ampere,
+- Ada Lovelace,
+- Hopper,
+- Blackwell.
+
+Optimalizace pro Pascal již nejsou prioritou.
+
+---
+
+# Proč PyTorch 2.4.1 + CUDA 12.1
+
+Nakonec jsme zvolili:
+
+```text
+torch 2.4.1+cu121
+```
+
+Výhody:
+
+- plná podpora CUDA,
+- bezproblémový provoz na Pascalu,
+- stabilní chování,
+- výborná kompatibilita s ComfyUI.
+
+Během testování fungovalo vše bez jediného problému.
+
+---
+
+# Ověření CUDA
+
+Po instalaci jsme ověřili několik důležitých věcí.
+
+Verzi PyTorch:
+
+```bash
+python -c "import torch; print(torch.__version__)"
+```
+
+Výsledek:
+
+```text
+2.4.1+cu121
+```
+
+---
+
+Dostupnost CUDA:
+
+```bash
+python -c "import torch; print(torch.cuda.is_available())"
+```
+
+Výsledek:
+
+```text
+True
+```
+
+---
+
+Podporované architektury:
+
+```bash
+python -c "import torch; print(torch.cuda.get_arch_list())"
+```
+
+Výsledek obsahoval mimo jiné:
+
+```text
+sm_50
+
+sm_60
+
+sm_70
+
+sm_75
+
+sm_80
+
+sm_86
+
+sm_90
+```
+
+To potvrzuje, že nainstalovaný PyTorch obsahuje podporu pro starší i novější architektury NVIDIA.
+
+---
+
+# CUDA benchmark
+
+Následně jsme provedli jednoduchý benchmark.
+
+Spočíval v opakovaném násobení dvou matic o velikosti:
+
+```text
+4096 × 4096
+```
+
+Výsledkem bylo přibližně:
+
+```text
+0.42 sekundy
+```
+
+Po prodloužení testu bylo dobře vidět, že využití GPU dosahovalo téměř 100 %.
+
+To byl nejlepší důkaz, že CUDA funguje správně.
+
+---
+
+# První spuštění ComfyUI
+
+Při spuštění ComfyUI se zobrazilo několik důležitých informací.
+
+Například:
+
+```text
+Device:
+
+Quadro P5000
+
+16 GB VRAM
+```
+
+a dále:
+
+```text
+Using pytorch attention
+```
+
+To potvrzuje, že ComfyUI využívá GPU přesně tak, jak jsme očekávali.
+
+---
+
+# Upozornění na novější PyTorch
+
+ComfyUI současně zobrazilo upozornění:
+
+```text
+DynamicVRAM support requires Pytorch version 2.8 or later.
+```
+
+Tuto hlášku jsme se rozhodli ignorovat.
+
+Důvod je jednoduchý.
+
+Funkce DynamicVRAM je zajímavá především pro novější grafické karty.
+
+Na Pascalu nepřináší zásadní výhodu.
+
+Mnohem důležitější je stabilita celého prostředí.
+
+---
+
+# Filozofie tohoto projektu
+
+Během instalace jsme se několikrát mohli vydat cestou:
+
+„Použijme úplně nejnovější verzi všeho.“
+
+Nakonec jsme zvolili jiný přístup.
+
+Použili jsme verze, které:
+
+- jsou ověřené,
+- dobře spolupracují,
+- mají dostatek zkušeností z komunity,
+- poskytují stabilní výkon.
+
+To je podle mého názoru správná cesta zejména u pracovních stanic.
+
+---
+
+# Budoucí aktualizace
+
+Až bude potřeba prostředí aktualizovat, doporučuji postupovat opatrně.
+
+Nejdříve vytvořit nové virtuální prostředí.
+
+Například:
+
+```text
+comfyui313
+```
+
+nebo
+
+```text
+comfyui314
+```
+
+Teprve v něm otestovat:
+
+- novou verzi Pythonu,
+- novou verzi PyTorch,
+- novou verzi ComfyUI.
+
+Pokud bude vše fungovat, lze staré prostředí odstranit.
+
+Nikdy není vhodné aktualizovat funkční prostředí „na místě“.
+
+---
+
+# Závěr
+
+Po dokončení všech kroků jsme získali stabilní AI pracovní stanici postavenou na:
+
+- Arch Linuxu,
+- Pythonu 3.12.13,
+- pyenv,
+- virtuálním prostředí,
+- PyTorch 2.4.1 + CUDA 12.1,
+- NVIDIA Quadro P5000 (16 GB),
+- ComfyUI 0.27.
+
+Přestože nejde o nejmodernější hardware ani software, výsledná konfigurace poskytuje výborný výkon, vysokou stabilitu a dostatečnou rezervu pro běžnou práci se Stable Diffusion 1.5.
+
+Právě tato kombinace se během celého projektu ukázala jako nejrozumnější kompromis mezi výkonem, kompatibilitou a dlouhodobou udržitelností.
+
+# 10. Epilog
+
+## Od nápadu k funkční AI pracovní stanici
+
+Cílem tohoto projektu nebylo pouze nainstalovat ComfyUI.
+
+Chtěli jsme vytvořit stabilní, dlouhodobě udržitelné pracovní prostředí pro lokální generování obrázků pomocí umělé inteligence na starším profesionálním hardwaru.
+
+Na začátku jsme stáli před několika otázkami.
+
+Je ještě NVIDIA Quadro P5000 použitelná?
+
+Má smysl investovat čas do několik let staré architektury Pascal?
+
+Nebude lepší počkat na novější grafickou kartu?
+
+Po dokončení instalace můžeme na všechny tyto otázky odpovědět poměrně jednoznačně.
+
+Ano, smysl to má.
+
+---
+
+# Co jsme během projektu vybudovali
+
+Na konci instalace máme plně funkční prostředí obsahující:
+
+- Arch Linux,
+- NVIDIA proprietární ovladače,
+- CUDA,
+- Python 3.12.13 spravovaný pomocí pyenv,
+- samostatné virtuální prostředí,
+- PyTorch 2.4.1 + CUDA 12.1,
+- ComfyUI,
+- centrální knihovnu AI modelů,
+- první workflow,
+- první úspěšně vygenerované obrázky.
+
+To vše bez zásahu do systémového Pythonu.
+
+---
+
+# Co se osvědčilo
+
+Během celé instalace se jako nejdůležitější ukázalo několik rozhodnutí.
+
+## Nepoužívat systémový Python
+
+Oddělení vývojového prostředí od operačního systému výrazně usnadňuje budoucí údržbu.
+
+Pokud se něco pokazí, lze celé prostředí jednoduše odstranit a vytvořit znovu.
+
+Operační systém zůstává nedotčen.
+
+---
+
+## Centrální knihovna modelů
+
+Uložení všech modelů mimo adresář ComfyUI bylo jedno z nejlepších rozhodnutí.
+
+Modely dnes představují desítky až stovky gigabajtů dat.
+
+Nemá smysl je kopírovat při každé aktualizaci aplikace.
+
+Stejnou knihovnu mohou využívat i jiné nástroje, například Forge nebo SD.Next.
+
+---
+
+## Stabilní verze místo nejnovějších
+
+Během instalace jsme několikrát odolali pokušení používat nejnovější dostupné verze.
+
+Ukázalo se, že ověřené kombinace přinášejí méně problémů a více času na skutečnou práci.
+
+---
+
+# Co jsme se naučili
+
+Největším překvapením bylo zjištění, jak dobře si Quadro P5000 stále vede.
+
+Přestože jde o grafickou kartu uvedenou na trh v roce 2017, její:
+
+- 16 GB VRAM,
+- profesionální konstrukce,
+- stabilní ovladače
+
+z ní stále dělají velmi schopný akcelerátor pro Stable Diffusion 1.5.
+
+Pro mnoho úloh je důležitější dostatek paměti než samotný počet výpočetních jednotek.
+
+---
+
+# Doporučená filozofie práce
+
+Po několika dnech experimentování se vyplatilo držet několika jednoduchých pravidel.
+
+- Aktualizovat pouze tehdy, když k tomu existuje skutečný důvod.
+- Nové verze nejprve testovat v novém virtuálním prostředí.
+- Modely ukládat odděleně od aplikace.
+- Pravidelně zálohovat workflow a vlastní konfiguraci.
+- Mít raději několik dobře známých modelů než stovky nepoužívaných checkpointů.
+
+Dlouhodobě je tento přístup výrazně efektivnější než neustálé hledání novinek.
+
+---
+
+# Možné budoucí upgrady
+
+Pokud bude v budoucnu potřeba vyšší výkon, nabízí se několik zajímavých možností.
+
+## NVIDIA RTX A5000
+
+Pravděpodobně nejpřirozenější nástupce Quadro P5000.
+
+Výhody:
+
+- architektura Ampere,
+- 24 GB VRAM,
+- Tensor Cores,
+- výrazně vyšší výkon.
+
+Pro pracovní stanici představuje velmi rozumný upgrade.
+
+---
+
+## NVIDIA RTX 3090
+
+Výborný poměr výkonu a ceny na trhu s použitým hardwarem.
+
+Výhody:
+
+- 24 GB VRAM,
+- vysoký výkon,
+- široká podpora v AI komunitě.
+
+Nevýhodou je vyšší spotřeba elektrické energie.
+
+---
+
+## NVIDIA RTX 4090
+
+V současnosti jedna z nejvýkonnějších spotřebitelských grafických karet.
+
+Je ideální pro:
+
+- SDXL,
+- Flux,
+- větší jazykové modely,
+- trénování vlastních LoRA.
+
+Na druhou stranu je její pořizovací cena výrazně vyšší.
+
+---
+
+# A co dál?
+
+Po úspěšném zvládnutí základů ComfyUI lze pokračovat například:
+
+- vytvářením vlastních workflow,
+- používáním LoRA modelů,
+- ControlNet,
+- IPAdapter,
+- upscalery,
+- dávkovým generováním obrázků,
+- automatizací pomocí API.
+
+Možnosti ComfyUI jsou téměř neomezené.
+
+---
+
+# Poděkování
+
+Tento dokument vznikal průběžně během skutečné instalace.
+
+Nejde o přepis cizího návodu ani o teoretický článek.
+
+Každý uvedený krok byl ověřen přímo na pracovní stanici Lenovo ThinkStation P720 s grafickou kartou NVIDIA Quadro P5000.
+
+Právě díky průběžnému řešení problémů, slepých uliček i drobných detailů vznikl dokument, který zachycuje nejen výsledný postup, ale i důvody jednotlivých rozhodnutí.
+
+Věřím, že díky tomu pomůže i dalším uživatelům, kteří chtějí zprovoznit moderní AI nástroje na starším profesionálním hardwaru.
+
+---
+
+# Konečné hodnocení
+
+Po dokončení projektu mohu tuto konfiguraci doporučit každému, kdo:
+
+- chce stabilní lokální AI pracovní stanici,
+- nechce investovat vysoké částky do nejnovějšího hardwaru,
+- preferuje Linux,
+- chce mít své modely i data plně pod kontrolou.
+
+Moderní umělá inteligence nemusí být výsadou nejnovějších grafických karet.
+
+S dobře navrženým prostředím, vhodně zvoleným softwarem a trochou trpělivosti lze dosáhnout velmi kvalitních výsledků i na hardwaru, který má za sebou několik let provozu.
+
+A právě to bylo hlavním cílem tohoto projektu.
+
+
