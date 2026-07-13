@@ -14,52 +14,83 @@
 </head>
 <body>
 <h1><strong>testing ai</strong></h1>
-<h1>Sítě v Linuxu - Přechod od net-tools k iproute2</h1>
+<h1>🌐 Správa sítě v Linuxu</h1>
+<p>V moderním Linuxu je zásadní změna přišla s přechodem od starého balíku <strong>net-tools</strong> k modernímu <strong>iproute2</strong>. Starý příkaz <code>ifconfig</code> byl 
+nahrazen robustnější a flexibilnější <code>ip</code>, zatímco <code>netstat</code> byl nahrazen <code>ss</code>. Tato změna umožnila lepší správu sítě a rozšířené možnosti. </p>
 <blockquote>
-<p>[!IMPORTANT] Při práci se sítěmi v moderním Linuxu, zejména v Ubuntu/Kubuntu, je zásadní pochopit a 
-naučit se používat příkazy z balíku <code>iproute2</code> namísto zastaralých nástrojů z balíku <code>net-tools</code>. 
-Přechod proběhl s novým způsobem práce se sítovou konfigurací, který je flexibilnější a nabízí 
-pokročilejší funkce. Staré nástroje jako <code>ifconfig</code> a <code>netstat</code> jsou stále dostupné, ale používání 
-<code>iproute2</code> je nyní standardní a doporučené.</p>
+<p>[!IMPORTANT] Přechod na iproute2 znamená, že některé staré příkazy již nebudou fungovat včetně standardních balíků.</p>
 </blockquote>
-<p>V moderním Linuxu se síťová správa posunula k nástrojům z balíku <code>iproute2</code>, který poskytuje jednotný 
-rozhraní pro správu sítě od jádra po uživatelské aplikace.  Příkazy jako <code>ip</code>, <code>ss</code> a <code>arp</code> představují 
-pokročilé a flexibilní nástroje pro sledování a manipulaci se sítovými prostředky. Je to zásadní změna 
-oproti jednodušším, ale méně robustním nástrojům z <code>net-tools</code>.  Pochopení principů <code>iproute2</code> je 
-klíčové pro efektivní správu sítí v dnešním Linuxovém prostředí.</p>
-<h2>Přehled Příkazů - Staré vs. Nové</h2>
-<p>| Účel použití | Starý příkaz (net-tools) -&gt; | Nový příkaz (iproute2) -&gt; | Rychlý příklad s parametrem | 
-Diagnostický tip |
-|---|---|---|---|---|
-| Zobrazení IP adresy | <code>ifconfig</code> | <code>ip addr show</code> | <code>ip addr show</code> | Kontrola rozsahu a typu adrese.<br />
-Problémy s konfigurací? |
-| Kontrola otevřených portů | <code>netstat -tulnp</code> | <code>ss -tulnp</code> | <code>ss -tulnp</code> | <code>ss</code> je rychlejší, 
-podrobnější. Zkontroluj, zda se aplikace poslouchají. |
-| Zobrazení směrovací tabulky | <code>route -n</code> | <code>ip route show</code> | <code>ip route show</code> | Hledej chyby v 
-trasování, neočekávané mezilehlé routy.  Zkontroluj masku sítě. |
-| Sledování paketů | <code>traceroute</code> | <code>tracepath</code> | <code>tracepath google.com</code> |  Identifikace problémových 
-segmentů v síti. Zvol správnou verzi pro přesnost a rychlost. |
-| Řízení protokolu ARP | <code>arp -a</code> | <code>ss addr</code> (ve spojení s 'ip') | <code>ss addr</code> |  Zkontroluj, které 
-adresy odpovídají MAC adresám. Problémy s broadcastem? |
-| Změna směrovacího cíle | <code>route add -net &lt;cílová síť&gt; gw &lt;brána&gt;</code> | <code>ip route add &lt;cílová síť&gt; via 
-&lt;brána&gt;</code>  | <code>ip route add 192.168.1.0/24 via 192.168.1.1</code> | Ujisti se, že brána je správná a dostupná. 
-Kontrola směrování. |
-| Zobrazení statistik sítě | <code>netstat -b</code> (vyžaduje root) |  Neexistuje přímý ekvivalent - používá se 
-kombinace <code>ss</code>, <code>ip</code>, <code>tc</code> |  Komplexní použití, vyžaduje hlubší znalosti. |  Pochop, jaké aplikace 
-spotřebovávají síťový provoz. Sleduj využití带宽.  |</p>
-<h2>Zdroje a Literatura</h2>
-<ol>
-<li>Dingus, M. (2018). <em>Linux network programming</em>. Packt Publishing.</li>
-<li>Van Pelt, G., &amp; Leininger, K. (2013). <em>TCP/IP network administration</em>. Cisco Press.
-```</li>
-</ol>
-<p><strong>Poznámky:</strong></p>
+<hr />
+<h2>📋 Přehledová tabulka příkazů</h2>
+<table>
+<thead>
+<tr>
+<th>Účel použití</th>
+<th>Starý příkaz</th>
+<th>Nový příkaz</th>
+<th>Rychlý příklad</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Zobrazení IP adresy</td>
+<td><code>ifconfig</code></td>
+<td><code>ip addr show</code></td>
+<td><code>ip addr show enp0s3</code></td>
+</tr>
+<tr>
+<td>Správa routování</td>
+<td><code>route</code></td>
+<td><code>ip route</code></td>
+<td><code>sudo ip route add default via 192.168.1.1</code></td>
+</tr>
+<tr>
+<td>Kontrola otevřených portů</td>
+<td><code>netstat -tuln</code></td>
+<td><code>ss -tuln</code></td>
+<td><code>sudo ss -tuln</code></td>
+</tr>
+<tr>
+<td>Aktivace síťového rozhraní</td>
+<td><code>ifup</code></td>
+<td><code>ip link set up</code></td>
+<td><code>sudo ip link set enp0s3 up</code></td>
+</tr>
+<tr>
+<td>Zobrazení ARP cache</td>
+<td><code>arp -a</code></td>
+<td><code>ip neigh show</code></td>
+<td><code>ip neigh show</code></td>
+</tr>
+<tr>
+<td>Diagnostika dostupnosti hostitele (ICMP)</td>
+<td><code>ping</code></td>
+<td><code>ping</code></td>
+<td><code>ping 8.8.8.8</code></td>
+</tr>
+<tr>
+<td>Sledování trasy paketů (Traceroute)</td>
+<td><code>traceroute</code></td>
+<td><code>traceroute</code></td>
+<td><code>traceroute google.com</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>💡 Tipy, triky a další použití</h2>
 <ul>
-<li>Tento dokument je optimalizován pro čitelnost a snadné používání na GitHub Wiki.</li>
-<li>Používám Markdown syntaxi pro formátování kódu a zvýraznění důležitých informací.</li>
-<li>Tabulka poskytuje přehledné srovnání příkazů, což usnadňuje adaptaci na nový workflow.</li>
-<li>Zdroje jsou vybrány pro jejich odbornost a relevanci k tématu.</li>
-<li>Upozornění zvýrazněno pomocí <code>![IMPORTANT]</code> syntaxe.</li>
+<li>🚀 <strong>Použijte <code>sudo</code> pro přístup k síťovým příkazům</strong>: Některé příkazy jako <code>ss -tuln</code> vyžadují privilégy, proto je potřeba použít 
+<code>sudo</code>.  </li>
+<li>🔒 <strong>Zrychlení výpisu pomocí <code>-n</code></strong>: Parametr <code>-n</code> ve <code>ss</code> a <code>ip</code> zkrácí čas na získání výstupu, protože se vyhne překladu portů do 
+názvů.  </li>
+<li>⚡ <strong>Pro sledování změn použijte <code>watch</code></strong>: Příkaz <code>watch ip addr show</code> zobrazí aktualizovaný stav rozhraní každých 2 vteřin.</li>
+</ul>
+<hr />
+<h2>📚 Zdroje a literatura</h2>
+<ul>
+<li>📖 Linux man-pages  </li>
+<li>📖 The Linux Documentation Project (TLDP)  </li>
+<li>📖 RFC 791 - Internet Protocol  </li>
 </ul>
 
 <p style="margin-top: 2em;"><a href="../index.html">← Zpět na přehled</a></p>
