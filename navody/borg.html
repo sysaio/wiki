@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>nano – testový editor</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 2em; line-height: 1.6; }
+    img { max-width: 100%; height: auto; }
+    pre { background: #f4f4f4; padding: 1em; border-radius: 5px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+  </style>
+</head>
+<body>
+<h1>Základní návod pro nano</h1>
+<p><strong>Nano</strong> je jednoduchý textový editor pro terminál. Níže jsou uvedeny základní příkazy, které ti pomohou začít.</p>
+<h2>Obrázek</h2>
+<p>Takhle vypadá nano:</p>
+<p><img alt="nano s tímto návodem" src="obrazky/nano.png" /></p>
+<h2>Spuštění</h2>
+<p>```bash
+nano název_souboru</p>
+<p>Pohyb v souboru
+Šipky: Pohyb kurzorem</p>
+<p>Ctrl + _ + číslo řádku: Přejít na konkrétní řádek</p>
+<p>Úpravy
+Piš text běžně jako v jiném editoru</p>
+<p>Backspace nebo Delete: mazání znaků</p>
+<p>Uložení a ukončení
+Ctrl + O: Uložit soubor (potvrď název Enterem)</p>
+<p>Ctrl + X: Ukončit editor (pokud jsou neuložené změny, editor se zeptá)</p>
+<p>Užitočné příkazy</p>
+<table>
+<thead>
+<tr>
+<th>Klávesová zkratka</th>
+<th>Akce</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Ctrl</code> + <code>G</code></td>
+<td>Nápověda</td>
+</tr>
+<tr>
+<td><code>Ctrl</code> + <code>W</code></td>
+<td>Hledat v souboru</td>
+</tr>
+<tr>
+<td><code>Ctrl</code> + <code>K</code></td>
+<td>Vyjmout řádek</td>
+</tr>
+<tr>
+<td><code>Ctrl</code> + <code>U</code></td>
+<td>Vložit řádek</td>
+</tr>
+<tr>
+<td><code>Ctrl</code> + <code>\</code></td>
+<td>Nahradit (hledat a nahradit)</td>
+</tr>
+<tr>
+<td><code>Ctrl</code> + <code>C</code></td>
+<td>Zobrazit pozici kurzoru</td>
+</tr>
+</tbody>
+</table>
+<p>Tipy
+Nano automaticky nevytváří zálohy – ulož si práci často!</p>
+<p>Při chybě použij Ctrl + C k přerušení příkazu nebo návratu</p>
+<p>Editor nano je vhodný pro začátečníky i pokročilé, kteří potřebují rychlé úpravy přímo v terminálu.</p>
+<h1>🅰️ Nano – legenda Meta (<code>M-</code>) příkazů (Alt + …)</h1>
+<p>V editoru <strong>nano</strong> znamená <code>M-</code> klávesovou zkratku s <strong>Alt</strong> (tzv. „Meta“ klávesou). Níže jsou nejčastější z nich – i s popisem v češtině.</p>
+<table>
+<thead>
+<tr>
+<th>Zkratka (M-…)</th>
+<th>Klávesa</th>
+<th>Význam (česky)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>M-U</code></td>
+<td><code>Alt + U</code></td>
+<td>Vrátit poslední akci (Undo)</td>
+</tr>
+<tr>
+<td><code>M-E</code></td>
+<td><code>Alt + E</code></td>
+<td>Přejít na konec slova</td>
+</tr>
+<tr>
+<td><code>M-B</code></td>
+<td><code>Alt + B</code></td>
+<td>Přejít na začátek slova</td>
+</tr>
+<tr>
+<td><code>M-6</code></td>
+<td><code>Alt + 6</code></td>
+<td>Kopírovat aktuální řádek (označení)</td>
+</tr>
+<tr>
+<td><code>M-]</code></td>
+<td><code>Alt + ]</code></td>
+<td>Skok na konec bloku závorek</td>
+</tr>
+<tr>
+<td><code>M-[</code></td>
+<td><code>Alt + [</code></td>
+<td>Skok na začátek bloku závorek</td>
+</tr>
+<tr>
+<td><code>M-A</code></td>
+<td><code>Alt + A</code></td>
+<td>Spustit/ukončit označování (markování)</td>
+</tr>
+<tr>
+<td><code>M-Y</code></td>
+<td><code>Alt + Y</code></td>
+<td>Přejít na začátek souboru</td>
+</tr>
+<tr>
+<td><code>M-\\</code></td>
+<td><code>Alt + \\</code></td>
+<td>Přejít na začátek</td>
+</tr>
+<tr>
+<td><code>M-/</code></td>
+<td><code>Alt + /</code></td>
+<td>Přejít na konec souboru</td>
+</tr>
+<tr>
+<td><code>M-T</code></td>
+<td><code>Alt + T</code></td>
+<td>Kontrola pravopisu (pokud je podpora)</td>
+</tr>
+<tr>
+<td><code>M-V</code></td>
+<td><code>Alt + V</code></td>
+<td>Posun o stránku dolů (někdy <code>PgDn</code>)</td>
+</tr>
+<tr>
+<td><code>M-^</code></td>
+<td><code>Alt + Shift + 6</code></td>
+<td>Začít označování (jiná varianta <code>M-A</code>)</td>
+</tr>
+<tr>
+<td><code>M-Q</code></td>
+<td><code>Alt + Q</code></td>
+<td>Přeskočit zpět na předchozí výskyt</td>
+</tr>
+<tr>
+<td><code>M-G</code></td>
+<td><code>Alt + G</code></td>
+<td>Přejít na konkrétní řádek</td>
+</tr>
+<tr>
+<td><code>M-R</code></td>
+<td><code>Alt + R</code></td>
+<td>Vložit obsah jiného souboru</td>
+</tr>
+<tr>
+<td><code>M-C</code></td>
+<td><code>Alt + C</code></td>
+<td>Zobrazit/skrýt počítadlo znaků a řádků</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>📝 Některé zkratky se liší podle nastavení systému nebo klávesnice – pokud ti některé nefungují, zkus jiný terminál (např. <code>xterm</code> nebo <code>gnome-terminal</code>).</p>
+</blockquote>
+<hr />
+<h2>🧪 Tip: Jak poznáš aktivní označení</h2>
+<p>Když zmáčkneš <code>Alt + A</code>, aktivuje se označování. Pomocí šipek označíš blok textu a pak:</p>
+<ul>
+<li><code>Ctrl + K</code> = vyjmeš (odstraníš) označený blok</li>
+<li><code>Alt + 6</code> = zkopíruješ blok</li>
+<li><code>Ctrl + U</code> = vložíš blok</li>
+</ul>
+<hr />
+<p>^ = Ctrl
+M- = Alt (Meta)</p>
+<p>🧪 Tip pro otestování:
+Pokud si nejsi jistý, co zkratka dělá, klidně si otevři testovací soubor a vyzkoušej např.:</p>
+<p>Alt + U → vrátí poslední změnu
+Alt + E → pohyb na konec řádku/slova
+Alt + A → označování textu (začne výběr)</p>
+
+<p style="margin-top: 2em;"><a href="../index.html">← Zpět na přehled</a></p>
+</body>
+</html>
