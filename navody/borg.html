@@ -13,624 +13,685 @@
   </style>
 </head>
 <body>
-<p>BorgBackup: jak funguje moderní zálohování systému a dokumentů</p>
-<p>BorgBackup je nástroj pro vytváření deduplikovaných, komprimovaných a šifrovaných záloh. Na první pohled může připomínat klasické tar nebo rsync, ale jeho princip je výrazně jiný.</p>
-<p>Místo toho, aby při každé záloze vytvářel další kompletní kopii všech souborů, rozděluje data na bloky — chunky — a ukládá pouze bloky, které v repozitáři ještě nejsou.</p>
-<p>Výsledkem je, že každá záloha může vypadat jako kompletní snapshot systému, ale fyzicky na disku obvykle zabírá pouze prostor odpovídající novým nebo změněným datům.</p>
-<ol>
-<li>Borg pracuje s repozitářem</li>
-</ol>
-<p>Základním prvkem BorgBackup není jednotlivý .tar soubor, ale repository.</p>
-<p>V našem případě máme například systémový repozitář:</p>
-<p>/mnt/data/0_backup_0/0_backup_LINUX_0</p>
-<p>A samostatný repozitář pro dokumenty:</p>
-<p>/root/.backup_DOCUMENTS_0</p>
-<p>Do repozitáře Borg ukládá jednotlivé archives.</p>
+<h1>BorgBackup na Linuxu: bezpečné zálohování, retence a obnova po havárii</h1>
+<p>BorgBackup je deduplikační zálohovací nástroj určený pro vytváření efektivních a šifrovaných záloh. V tomto článku si ukážeme praktický návrh zálohování Linuxového systému pomocí BorgBackup, automatizaci přes systemd, retenční politiku a především postup obnovy souborů i celého systému po havárii.</p>
+<p>Cílem není pouze vytvořit zálohu, ale navrhnout systém tak, aby bylo možné data <strong>spolehlivě obnovit i ve chvíli, kdy původní systém přestane fungovat</strong>.</p>
+<hr />
+<h2>1. Proč BorgBackup</h2>
+<p>Klasická záloha často znamená vytvoření další úplné kopie dat. Borg přistupuje k problému jinak.</p>
+<p>Při každé záloze vytvoří nový <strong>archiv</strong>, ale data ukládá do repozitáře pomocí deduplikace. Pokud se určitá část souborů mezi dvěma zálohami nezměnila, Borg ji nemusí ukládat znovu.</p>
+<p>Výsledkem může být například:</p>
+<pre><code class="language-text">Záloha 1: 100 GB
+Záloha 2: +500 MB nových dat
+Záloha 3: +200 MB nových dat
+Záloha 4: +800 MB nových dat
+</code></pre>
+<p>Logická velikost všech archivů tedy může být několik set GB, zatímco skutečně spotřebované místo je výrazně menší.</p>
+<p>Borg navíc podporuje:</p>
+<ul>
+<li>deduplikaci,</li>
+<li>kompresi,</li>
+<li>šifrování,</li>
+<li>kontrolu integrity,</li>
+<li>retenční politiku,</li>
+<li>inkrementální ukládání změn,</li>
+<li>obnovu jednotlivých souborů,</li>
+<li>obnovu celých adresářových struktur,</li>
+<li>automatizaci pomocí systemd.</li>
+</ul>
+<hr />
+<h1>2. Základní terminologie</h1>
+<p>Je důležité rozlišovat dvě věci:</p>
+<h2>Repository</h2>
+<p><strong>Repository</strong> je úložiště, do kterého Borg ukládá zálohovaná data.</p>
 <p>Například:</p>
-<p>system-2026-08-27T07:14:33
-system-2026-08-27T18:32:05
-system-2026-08-28T12:16:53
-system-2026-08-29T00:00:04
-system-2026-08-30T14:10:30</p>
-<p>U dokumentů obdobně:</p>
-<p>docs-2026-08-30T14:12:58</p>
-<p>Archive je tedy konkrétní bod v čase, ke kterému můžeme data obnovit.</p>
-<ol>
-<li>Snapshot neznamená další kompletní kopii</li>
-</ol>
-<p>To je jedna z nejdůležitějších vlastností Borgu.</p>
-<p>Představme si, že máme systém o velikosti přibližně 150 GB.</p>
-<p>První záloha může do repozitáře uložit desítky gigabajtů nových dat. Další záloha ale nemusí znovu uložit všech 150 GB.</p>
-<p>Pokud se změnily například pouze:</p>
-<p>systémové logy,
-několik konfiguračních souborů,
-aktualizované programy,
-několik souborů v /home,</p>
-<p>Borg uloží pouze nové chunky.</p>
-<p>Proto můžeme mít například:</p>
-<p>Archive:
-Original size:      150 GB
-Compressed size:    108 GB
-Deduplicated size:  450 MB</p>
-<p>To neznamená, že archiv obsahuje pouze 450 MB dat.</p>
-<p>Znamená to, že pro vytvoření tohoto nového snapshotu bylo v repozitáři potřeba uložit pouze přibližně 450 MB nových dat. Ostatní chunky už v repozitáři existovaly.</p>
-<p>Každý archive přesto představuje kompletní pohled na zálohovaný strom v daném okamžiku.</p>
-<ol>
-<li>Deduplikace</li>
-</ol>
-<p>Borg rozděluje soubory na chunky a ty identifikuje.</p>
-<p>Pokud se stejný obsah objeví ve více souborech nebo v různých archivech, nemusí být uložen znovu.</p>
-<p>To je deduplikace.</p>
-<p>Výhoda je největší právě u pravidelných záloh systému.</p>
-<p>První záloha:</p>
-<p>150 GB systému
-→ velké množství nových chunků</p>
-<p>Druhá záloha:</p>
-<p>150 GB systému
-→ většina chunků už existuje
-→ uloží se pouze nové/změněné chunky</p>
-<p>Třetí záloha funguje stejně.</p>
-<p>Díky tomu můžeme vytvářet mnoho historických bodů obnovy, aniž bychom potřebovali mnoho násobků velikosti zdrojových dat.</p>
-<ol>
-<li>Komprese</li>
-</ol>
-<p>Borg může data zároveň komprimovat.</p>
-<p>V systémovém repozitáři používáme konfiguraci založenou na Borgu a při zálohování dokumentů explicitně používáme:</p>
-<p>--compression lz4</p>
-<p>Komprese zmenšuje množství dat, která musí být fyzicky uložena.</p>
-<p>Je důležité rozlišovat:</p>
-<p>Original size
+<pre><code class="language-text">/backup/borg/linux
+</code></pre>
+<p>Repository obsahuje Borg metadata, šifrovací klíč a samotné deduplikované datové chunky.</p>
+<hr />
+<h2>Archive</h2>
+<p><strong>Archive</strong> je jeden konkrétní stav zálohovaného systému.</p>
+<p>Například:</p>
+<pre><code class="language-text">system-2026-08-30T02:00:00
+</code></pre>
+<p>Repository může obsahovat mnoho archivů:</p>
+<pre><code class="language-text">system-2026-08-28T02:00:00
+system-2026-08-29T02:00:00
+system-2026-08-30T02:00:00
+</code></pre>
+<p>Každý archiv představuje pohled na systém v určitém okamžiku.</p>
+<p>Díky deduplikaci ale neznamená, že každý archiv obsahuje kompletní fyzickou kopii systému.</p>
+<hr />
+<h1>3. Šifrování repository</h1>
+<p>Při vytváření repository je vhodné použít šifrování:</p>
+<pre><code class="language-bash">borg init --encryption=repokey-blake2 /backup/borg/linux
+</code></pre>
+<p>Použitý režim znamená, že:</p>
+<ul>
+<li>data v repository jsou šifrovaná,</li>
+<li>klíč je uložen v repository,</li>
+<li>přístup je chráněn passphrase,</li>
+<li>bez správného klíče a passphrase nelze zálohy jednoduše použít.</li>
+</ul>
+<p>Po inicializaci Borg výslovně upozorní, že je nutné bezpečně uložit <strong>Borg key i passphrase</strong>.</p>
+<p>To je kriticky důležité.</p>
+<h2>Záloha Borg key</h2>
+<p>Klíč je možné exportovat například:</p>
+<pre><code class="language-bash">borg key export /backup/borg/linux borg-key-backup
+</code></pre>
+<p>Případně lze vytvořit i textovou nebo QR reprezentaci podle potřeby.</p>
+<h3>Důležité</h3>
+<p>Borg key <strong>není totéž co passphrase</strong>.</p>
+<p>Pro obnovu potřebujete obě části:</p>
+<pre><code class="language-text">Borg key
+    +
+passphrase
+    =
+přístup k šifrovanému repository
+</code></pre>
+<p>Proto je vhodné mít jejich záložní kopie <strong>mimo samotný zálohovací disk</strong>.</p>
+<hr />
+<h1>4. Co zálohovat</h1>
+<p>Při zálohování celého Linuxového systému typicky nechceme zahrnout virtuální a dočasné filesystemy.</p>
+<p>Například:</p>
+<pre><code class="language-text">/proc
+/sys
+/dev
+/run
+/tmp
+/mnt
+/media
+/lost+found
+</code></pre>
+<p>Tyto adresáře mohou obsahovat:</p>
+<ul>
+<li>dynamické informace poskytované kernelem,</li>
+<li>zařízení,</li>
+<li>runtime data,</li>
+<li>dočasné soubory,</li>
+<li>připojené filesystemy,</li>
+<li>jiné zálohovací cíle.</li>
+</ul>
+<p>Typická záloha systému proto může vypadat například takto:</p>
+<pre><code class="language-bash">borg create \
+    --stats \
+    /backup/borg/linux::system-{now} \
+    / \
+    --exclude /proc \
+    --exclude /sys \
+    --exclude /dev \
+    --exclude /run \
+    --exclude /tmp \
+    --exclude /mnt \
+    --exclude /media \
+    --exclude /lost+found
+</code></pre>
+<p>Tím vznikne nový archiv obsahující stav systému v okamžiku vytvoření zálohy.</p>
+<hr />
+<h1>5. Co znamená deduplikace v praxi</h1>
+<p>Borg nerozhoduje pouze podle toho, zda je soubor nový nebo starý.</p>
+<p>Data rozděluje na <strong>chunks</strong>.</p>
+<p>Pokud například změníme několik KB uvnitř velkého souboru, nemusí být nutné znovu ukládat celý soubor.</p>
+<p>Borg znovu použije nezměněné části a uloží pouze nové chunky.</p>
+<p>To je jeden z důvodů, proč může být například:</p>
+<pre><code class="language-text">Original size:
+150 GB
+</code></pre>
+<p>ale:</p>
+<pre><code class="language-text">Deduplicated size:
+500 MB
+</code></pre>
+<p>pro další archiv.</p>
+<p><code>Original size</code> tedy není množství nově uložených dat.</p>
+<p>Je to logická velikost dat obsažených v daném archivu.</p>
+<p>Pro sledování skutečné spotřeby je důležitější:</p>
+<pre><code class="language-text">Deduplicated size
+</code></pre>
+<hr />
+<h1>6. Vytvoření zálohy</h1>
+<p>Základní příkaz:</p>
+<pre><code class="language-bash">borg create \
+    --stats \
+    /backup/borg/linux::system-{now} \
+    /
+</code></pre>
+<p>S výjimkami například:</p>
+<pre><code class="language-bash">borg create \
+    --stats \
+    /backup/borg/linux::system-{now} \
+    / \
+    --exclude /proc \
+    --exclude /sys \
+    --exclude /dev \
+    --exclude /run \
+    --exclude /tmp \
+    --exclude /mnt \
+    --exclude /media \
+    --exclude /lost+found
+</code></pre>
+<p>Borg vypíše například:</p>
+<pre><code class="language-text">Original size
 Compressed size
-Deduplicated size</p>
-<p>Například:</p>
-<p>Original size:      150.20 GB
-Compressed size:    108.08 GB
-Deduplicated size:   81.15 MB</p>
-<p>Tato tři čísla popisují různé věci.</p>
-<ol>
-<li>Šifrování</li>
-</ol>
-<p>Systémový repozitář byl vytvořen režimem:</p>
-<p>repokey-blake2</p>
-<p>Borg tedy chrání obsah repozitáře šifrováním.</p>
-<p>Zároveň je potřeba pamatovat na jednu zásadní věc:</p>
-<p>Nestačí mít pouze heslo.</p>
-<p>U režimu repokey je klíč uložen přímo v repozitáři.</p>
-<p>Proto je pro obnovu potřeba mít k dispozici:</p>
-<p>samotný Borg repozitář,
-Borg key,
-heslo ke klíči.</p>
-<p>Proto jsme také vytvořili zálohu Borg klíče.</p>
-<p>To je stejně důležité jako samotné zálohy.</p>
-<ol>
-<li>Proč nestačí zálohovat pouze heslo</li>
-</ol>
-<p>Představme si havárii datového disku.</p>
-<p>Máme:</p>
-<p>Borg repository</p>
-<p>ale nemáme exportovaný key.</p>
-<p>Nebo naopak máme key, ale neznáme jeho passphrase.</p>
-<p>V obou případech může být obnova prakticky nemožná.</p>
-<p>Proto je vhodné mít zabezpečené kopie:</p>
-<p>Borg repository
-+
-Borg key
-+
-passphrase</p>
-<p>A tyto tři věci neskladovat pouze na stejném disku.</p>
-<ol>
-<li>Borg archive jako bod v čase</li>
-</ol>
-<p>Každý archive můžeme chápat jako snapshot systému.</p>
-<p>Například:</p>
-<p>system-2026-08-27T07:14:33
-system-2026-08-27T18:32:05
-system-2026-08-28T12:16:53
-system-2026-08-29T00:00:04
-system-2026-08-30T14:10:30</p>
-<p>Můžeme si tedy vybrat, ke kterému okamžiku chceme systém nebo soubor vrátit.</p>
-<p>Například:</p>
-<p>borg list /mnt/data/0_backup_0/0_backup_LINUX_0</p>
-<p>nám zobrazí dostupné snapshoty.</p>
-<ol>
-<li>Retence</li>
-</ol>
-<p>Počet snapshotů nemusí růst do nekonečna.</p>
-<p>Proto používáme:</p>
-<p>borg prune</p>
-<p>V našem případě systémová záloha používá například:</p>
-<p>keep-daily 30
-keep-monthly 12</p>
-<p>Borg potom rozhoduje, které archive zachovat a které odstranit.</p>
-<p>Důležité je, že prune nemaže bezhlavě data potřebná pro ostatní snapshoty.</p>
-<p>Protože Borg používá deduplikované chunky, odstranění archive znamená odstranění pouze těch dat, která už nejsou potřebná žádným zachovaným archivem.</p>
-<p>Po prune může následovat:</p>
-<p>borg compact</p>
-<p>který umožní repozitáři uvolnit prostor, který už není potřeba.</p>
-<ol>
-<li>Proč tedy nepotřebujeme každý měsíc fyzický full backup?</li>
-</ol>
-<p>Klasický systém může být navržen například takto:</p>
-<p>pondělí → inkrementální
-úterý → inkrementální
-...
-1. den měsíce → full backup</p>
-<p>Borg tento koncept nepotřebuje stejným způsobem.</p>
-<p>Každý archive se chová jako kompletní snapshot, ale díky deduplikaci není nutné pokaždé fyzicky ukládat celý systém.</p>
-<p>Můžeme tedy mít:</p>
-<p>30 denních bodů obnovy
-+
-12 měsíčních bodů obnovy</p>
-<p>bez toho, aby každý z nich byl samostatnou 150GB kopií systému.</p>
-<p>To je jedna z hlavních výhod Borgu.</p>
-<ol>
-<li>Systém a dokumenty jsou dva různé typy dat</li>
-</ol>
-<p>V naší architektuře jsou zálohovány dvě důležité oblasti.</p>
-<p>Systém</p>
-<p>Zdroj:</p>
-<p>/</p>
-<p>s vynecháním pseudo-filesystémů a dalších oblastí, které nemají být zálohovány:</p>
-<p>/proc
-/sys
-/dev
-/run
-/tmp
-/mnt
-/media
-/lost+found</p>
-<p>Cíl:</p>
-<p>/mnt/data/0_backup_0/0_backup_LINUX_0
-Dokumenty</p>
-<p>Zdroj:</p>
-<p>/mnt/data/0_docum_0</p>
-<p>Cíl:</p>
-<p>/root/.backup_DOCUMENTS_0</p>
-<p>Oddělení repozitářů je záměrné.</p>
-<p>Systémová záloha je uložena na datovém disku, zatímco dokumentová záloha je umístěna na systémovém NVMe.</p>
-<p>Tím vzniká určitá redundance i mezi samotnými úložišti.</p>
-<ol>
-<li>Automatické zálohování</li>
-</ol>
-<p>Ruční spuštění zálohy je možné:</p>
-<p>sudo /root/bin/borg-linux-backup.sh</p>
-<p>Ale cílem je, aby zálohování běželo automaticky.</p>
-<p>Systémová záloha je proto spuštěna pomocí:</p>
-<p>borg-linux-backup.service</p>
-<p>a:</p>
-<p>borg-linux-backup.timer</p>
-<p>Timer je aktivní například jako:</p>
-<p>borg-linux-backup.timer
-    active (waiting)</p>
-<p>a naplánuje spuštění služby.</p>
-<p>Výhodou systemd oproti jednoduchému cron jobu je například dobrá integrace do systémového logování.</p>
-<p>Historii běhu můžeme zobrazit:</p>
-<p>sudo journalctl -u borg-linux-backup.service</p>
-<p>nebo například posledních 50 řádků:</p>
-<p>sudo journalctl -u borg-linux-backup.service -n 50 --no-pager
-12. Jak poznat, že záloha proběhla</p>
-<p>Nestačí pouze věřit, že timer existuje.</p>
-<p>Kontrolujeme několik věcí.</p>
-<p>Timer:</p>
-<p>systemctl status borg-linux-backup.timer --no-pager</p>
-<p>Poslední běh služby:</p>
-<p>systemctl status borg-linux-backup.service --no-pager</p>
-<p>Historii:</p>
-<p>sudo journalctl -u borg-linux-backup.service -n 50 --no-pager</p>
-<p>A skutečný obsah repozitáře:</p>
-<p>sudo env BORG_PASSCOMMAND='cat /root/.config/borg/passphrase' \
-    borg list /mnt/data/0_backup_0/0_backup_LINUX_0</p>
-<p>Tím ověřujeme nejen to, že timer existuje, ale že skutečně vznikají nové archivy.</p>
-<ol>
-<li>Borg versus rsync</li>
-</ol>
-<p>rsync nám dlouhou dobu dobře sloužil.</p>
-<p>Je jednoduchý, rychlý a výborný pro synchronizaci adresářů.</p>
-<p>Například:</p>
-<p>zdroj → přesná kopie cíle</p>
-<p>Borg ale přináší jiný model:</p>
-<p>zdroj
-  ↓
-snapshot
-  ↓
-deduplikace
-  ↓
-komprese
-  ↓
-šifrování
-  ↓
-historie snapshotů</p>
-<p>Proto jsme se rozhodli přejít na Borg jako jednotný zálohovací mechanismus.</p>
-<p>rsync tedy není potřeba dále používat jako hlavní backup engine. Historické skripty a zkušenosti s ním ale mají smysl zachovat jako dokumentaci vývoje systému.</p>
-<ol>
-<li>Co Borg neřeší</li>
-</ol>
-<p>Borg není kompletní disaster-recovery řešení sám o sobě.</p>
-<p>Neřeší například:</p>
-<p>dostupnost záložního disku,
-požár nebo krádež celého počítače,
-ztrátu všech kopií uložených na jednom místě,
-ztrátu Borg key,
-ztrátu passphrase,
-automatické znovunainstalování operačního systému.</p>
-<p>Proto je skutečná strategie:</p>
-<p>Borg
-+
-bezpečně uložený key
-+
-bezpečně uložená passphrase
-+
-samostatné úložiště / další kopie
-+
-otestovaný postup obnovy</p>
-<p>Nejdůležitější část posledního bodu je slovo otestovaný.</p>
-<p>Záloha, kterou jsme nikdy nezkusili obnovit, není stejně důvěryhodná jako záloha, jejíž obnovu jsme ověřili.</p>
-<ol>
-<li>Shrnutí</li>
-</ol>
-<p>BorgBackup nám umožňuje používat jednoduchý model:</p>
-<pre><code>         ┌────────────────────┐
-         │      SYSTÉM        │
-         │         /          │
-         └─────────┬──────────┘
-                   │
-                   ▼
-             Borg archive
-                   │
-          deduplikace + komprese
-                   │
-                   ▼
-      /mnt/data/.../LINUX_0
+Deduplicated size
 </code></pre>
-<p>a současně:</p>
-<pre><code>      /mnt/data/0_docum_0
-                │
-                ▼
-          Borg archive
-                │
-       deduplikace + komprese
-                │
-                ▼
-      /root/.backup_DOCUMENTS_0
+<p>Tyto hodnoty nám umožní sledovat efektivitu zálohování.</p>
+<hr />
+<h1>7. Kontrola záloh</h1>
+<p>Seznam archivů:</p>
+<pre><code class="language-bash">borg list /backup/borg/linux
 </code></pre>
-<p>Výsledkem není pouze jedna kopie dat.</p>
-<p>Výsledkem je historie bodů obnovy, ze kterých můžeme podle potřeby obnovit jednotlivé soubory, adresáře nebo celý systém.</p>
-<p>A právě proto je Borg velmi vhodný jako centrální backup engine pro koncept ZXLK.</p>
-<p>Obnova dat pomocí BorgBackup po havárii</p>
-<p>Zálohování má smysl pouze tehdy, pokud víme, jak data skutečně obnovit.</p>
-<p>Tento návod popisuje obnovu jednotlivých souborů i kompletního systému ze záloh BorgBackup používaných v systému ZXLK.</p>
-<p>Princip je jednoduchý:</p>
-<p>Borg repository
-      ↓
-vybraný archive
-      ↓
-borg extract
-      ↓
-obnovené soubory</p>
-<p>Při havárii celého systému je postup rozšířen o spuštění záchranného systému, připojení disků a následnou obnovu systémového stromu.</p>
-<ol>
-<li>Co potřebujeme k obnově</li>
-</ol>
-<p>Pro obnovu zašifrovaného Borg repozitáře potřebujeme:</p>
-<p>Borg repository,
-Borg key,
-passphrase.</p>
-<p>V našem systému je systémový repozitář:</p>
-<p>/mnt/data/0_backup_0/0_backup_LINUX_0</p>
-<p>Borg repozitář je šifrovaný režimem:</p>
-<p>repokey-blake2</p>
-<p>Proto je nutné mít bezpečně uložený také exportovaný Borg key.</p>
-<ol>
-<li>Nejprve zjistíme dostupné zálohy</li>
-</ol>
-<p>Pokud systém ještě běží, můžeme vypsat archivy:</p>
-<p>sudo env BORG_PASSCOMMAND='cat /root/.config/borg/passphrase' \
-    borg list /mnt/data/0_backup_0/0_backup_LINUX_0</p>
-<p>Výsledek může vypadat například:</p>
-<p>system-2026-08-27T07:14:33
-system-2026-08-27T18:32:05
-system-2026-08-28T12:16:53
-system-2026-08-29T00:00:04
-system-2026-08-30T14:10:30</p>
-<p>Každý řádek představuje jeden bod obnovy.</p>
-<p>Při obnově vybíráme konkrétní archive.</p>
-<ol>
-<li>Obnova jednoho souboru</li>
-</ol>
-<p>Nejbezpečnější způsob, jak si ověřit funkčnost zálohy, je obnovit nejprve jediný soubor do dočasného adresáře.</p>
+<p>Informace o repository:</p>
+<pre><code class="language-bash">borg info /backup/borg/linux
+</code></pre>
+<p>Kontrola integrity:</p>
+<pre><code class="language-bash">borg check /backup/borg/linux
+</code></pre>
+<p>Je dobré rozlišovat:</p>
+<pre><code class="language-text">borg create
+</code></pre>
+<p>= vytvoření zálohy</p>
+<pre><code class="language-text">borg list
+</code></pre>
+<p>= seznam archivů</p>
+<pre><code class="language-text">borg info
+</code></pre>
+<p>= informace o repository</p>
+<pre><code class="language-text">borg check
+</code></pre>
+<p>= kontrola integrity</p>
+<hr />
+<h1>8. Retenční politika</h1>
+<p>Postupem času by repository bez omezení rostlo.</p>
+<p>Proto je nutné definovat retenční politiku.</p>
 <p>Například:</p>
-<p>rm -rf /tmp/borg-restore-test
+<pre><code class="language-text">30 denních
+12 měsíčních
+</code></pre>
+<p>Pomocí:</p>
+<pre><code class="language-bash">borg prune \
+    --keep-daily 30 \
+    --keep-monthly 12 \
+    /backup/borg/linux
+</code></pre>
+<p>Pro komplexnější politiku můžeme použít například:</p>
+<pre><code class="language-bash">borg prune \
+    --keep-daily 7 \
+    --keep-weekly 4 \
+    --keep-monthly 12 \
+    /backup/borg/linux
+</code></pre>
+<p>Před ostrým použitím je vhodné politiku nejprve otestovat:</p>
+<pre><code class="language-bash">borg prune \
+    --list \
+    --dry-run \
+    --keep-daily 30 \
+    --keep-monthly 12 \
+    /backup/borg/linux
+</code></pre>
+<p><code>--dry-run</code> nic nemaže.</p>
+<p>Pouze ukáže, které archivy by byly zachovány a které by byly odstraněny.</p>
+<hr />
+<h1>9. Proč po prune použít compact</h1>
+<p><code>borg prune</code> odstraní archivy podle retenční politiky.</p>
+<p>Fyzické uvolnění prostoru je ale samostatná operace.</p>
+<p>Proto lze následně použít:</p>
+<pre><code class="language-bash">borg compact /backup/borg/linux
+</code></pre>
+<p>Typický postup je tedy:</p>
+<pre><code class="language-text">borg create
+      ↓
+borg prune
+      ↓
+borg compact
+</code></pre>
+<p>Nejdříve vytvoříme zálohu, potom odstraníme staré archivy a nakonec zkompakujeme repository.</p>
+<hr />
+<h1>10. Automatizace přes systemd</h1>
+<p>Zálohování je nejlepší automatizovat.</p>
+<p>Nestačí mít perfektní zálohovací skript, pokud si člověk musí každý den vzpomenout, že ho má spustit.</p>
+<p>Typická struktura může být:</p>
+<pre><code class="language-text">/root/bin/borg-linux-backup.sh
+        │
+        ▼
+borg-linux-backup.service
+        │
+        ▼
+borg-linux-backup.timer
+</code></pre>
+<p>Timer například spouští službu jednou denně.</p>
+<p>Kontrola timeru:</p>
+<pre><code class="language-bash">systemctl status borg-linux-backup.timer
+</code></pre>
+<p>Seznam naplánovaných timerů:</p>
+<pre><code class="language-bash">systemctl list-timers --all
+</code></pre>
+<p>Kontrola služby:</p>
+<pre><code class="language-bash">systemctl status borg-linux-backup.service
+</code></pre>
+<p>Log:</p>
+<pre><code class="language-bash">journalctl -u borg-linux-backup.service -n 50 --no-pager
+</code></pre>
+<p>Pro delší výpis:</p>
+<pre><code class="language-bash">journalctl -u borg-linux-backup.service --no-pager
+</code></pre>
+<hr />
+<h1>11. Passphrase a automatizace</h1>
+<p>Automatická záloha nemůže čekat na ruční zadání passphrase.</p>
+<p>Proto může Borg získávat passphrase například prostřednictvím:</p>
+<pre><code class="language-bash">BORG_PASSCOMMAND
+</code></pre>
+<p>Konfigurace s citlivými údaji by měla být:</p>
+<ul>
+<li>přístupná pouze rootovi,</li>
+<li>chráněná vhodnými permissions,</li>
+<li>mimo běžně publikované konfigurace,</li>
+<li>nikdy nezahrnutá do Git repository.</li>
+</ul>
+<p>Například:</p>
+<pre><code class="language-bash">chmod 600 /root/.config/borg/linux-backup.conf
+</code></pre>
+<p>Samotná passphrase se <strong>nikdy nemá objevit v GitHub Wiki, README, issue, logu ani screenshotu</strong>.</p>
+<hr />
+<h1>12. Proč je důležitý test obnovy</h1>
+<p>Záloha, kterou nikdo nikdy nezkusil obnovit, není ověřená záloha.</p>
+<p>Ideální je pravidelně provést alespoň test:</p>
+<ol>
+<li>vybrat archiv,</li>
+<li>obnovit jeden soubor,</li>
+<li>porovnat ho s originálem,</li>
+<li>případně provést rozsáhlejší test obnovy.</li>
+</ol>
+<hr />
+<h1>13. Obnova jednoho souboru</h1>
+<p>Nejprve zjistíme dostupné archivy:</p>
+<pre><code class="language-bash">borg list /backup/borg/linux
+</code></pre>
+<p>Potom si můžeme zobrazit obsah konkrétního archivu:</p>
+<pre><code class="language-bash">borg list /backup/borg/linux::system-2026-08-30T02:00:00
+</code></pre>
+<p>Pokud chceme obnovit například:</p>
+<pre><code class="language-text">home/user/example.txt
+</code></pre>
+<p>vytvoříme testovací adresář:</p>
+<pre><code class="language-bash">rm -rf /tmp/borg-restore-test
 mkdir -p /tmp/borg-restore-test
-cd /tmp/borg-restore-test</p>
-<p>Potom spustíme Borg:</p>
-<p>sudo env BORG_PASSCOMMAND='cat /root/.config/borg/passphrase' \
-    borg extract \
-    /mnt/data/0_backup_0/0_backup_LINUX_0::system-2026-08-30T14:10:30 \
-    home/liko/bin/README.md</p>
-<p>Důležitá věc:</p>
-<p>borg extract nepoužívá parametr --destination.</p>
-<p>Borg extrahuje soubory do aktuálního pracovního adresáře.</p>
+</code></pre>
+<p>Přejdeme do něj:</p>
+<pre><code class="language-bash">cd /tmp/borg-restore-test
+</code></pre>
+<p>A spustíme:</p>
+<pre><code class="language-bash">borg extract \
+    /backup/borg/linux::system-2026-08-30T02:00:00 \
+    home/user/example.txt
+</code></pre>
+<h2>Důležité: Borg nemá <code>--destination</code></h2>
+<p>Borg <code>extract</code> standardně extrahuje soubory do <strong>aktuálního pracovního adresáře</strong>.</p>
 <p>Proto je správný postup:</p>
-<p>cd /tmp/borg-restore-test</p>
-<p>a teprve potom:</p>
-<p>borg extract ...
-4. Proč se v příkazu nepíše /home/liko/...</p>
-<p>Cesta předaná borg extract je relativní cesta uvnitř archive.</p>
-<p>Proto používáme:</p>
-<p>home/liko/bin/README.md</p>
-<p>a ne:</p>
-<p>/home/liko/bin/README.md</p>
-<p>Borg potom vytvoří:</p>
-<p>/tmp/borg-restore-test/home/liko/bin/README.md
-5. Kontrola obnoveného souboru</p>
-<p>Po obnově můžeme porovnat hash původního a obnoveného souboru:</p>
-<p>sha256sum /home/liko/bin/README.md
-sha256sum /tmp/borg-restore-test/home/liko/bin/README.md</p>
-<p>Pokud jsou SHA-256 hodnoty stejné, obsah souborů je identický.</p>
-<p>Ještě přímější kontrola je:</p>
-<p>cmp -s \
-    /home/liko/bin/README.md \
-    /tmp/borg-restore-test/home/liko/bin/README.md \
-    &amp;&amp; echo "OK - soubor je identický" \
-    || echo "CHYBA - soubor se liší"
-6. Pozor na oprávnění při testovací obnově</p>
-<p>Pokud použijeme:</p>
-<p>sudo borg extract ...</p>
-<p>Borg může obnovit metadata a vlastníka odpovídající původnímu systému.</p>
-<p>Proto může být obnovený soubor vlastněný například root.</p>
-<p>Při testovací obnově do /tmp je možné po extrakci změnit vlastníka:</p>
-<p>sudo chown -R "$USER:$USER" /tmp/borg-restore-test</p>
-<p>Potom už můžeme soubory pohodlně číst jako běžný uživatel.</p>
-<p>U skutečné obnovy systému ale není správné plošně měnit vlastníky na běžného uživatele. Tam chceme zachovat původní vlastníky, skupiny a oprávnění.</p>
-<ol>
-<li>Obnova celého adresáře</li>
-</ol>
-<p>Stejným způsobem můžeme obnovit například celý adresář:</p>
-<p>cd /tmp/borg-restore-test</p>
-<p>sudo env BORG_PASSCOMMAND='cat /root/.config/borg/passphrase' \
-    borg extract \
-    /mnt/data/0_backup_0/0_backup_LINUX_0::system-2026-08-30T14:10:30 \
-    home/liko/bin</p>
-<p>Borg obnoví strom:</p>
-<p>/tmp/borg-restore-test/home/liko/bin/
-8. Obnova dokumentů</p>
-<p>Dokumenty mají vlastní Borg repozitář:</p>
-<p>/root/.backup_DOCUMENTS_0</p>
-<p>Nejdříve zobrazíme dostupné snapshoty:</p>
-<p>sudo env BORG_PASSCOMMAND='cat /root/.config/borg/passphrase' \
-    borg list /root/.backup_DOCUMENTS_0</p>
-<p>Můžeme potom například obnovit dokumenty do dočasného adresáře:</p>
-<p>rm -rf /tmp/borg-documents-restore
-mkdir -p /tmp/borg-documents-restore
-cd /tmp/borg-documents-restore</p>
-<p>A spustit:</p>
-<p>sudo env BORG_PASSCOMMAND='cat /root/.config/borg/passphrase' \
-    borg extract \
-    /root/.backup_DOCUMENTS_0::docs-2026-08-30T14:12:58</p>
-<p>Po dokončení bude obnovený strom odpovídat cestě uložené v archive.</p>
-<ol>
-<li>Obnova celého systému</li>
-</ol>
-<p>Obnova celého Linuxového systému je jiná než obnova jednoho souboru.</p>
-<p>Pokud operační systém stále funguje, můžeme některé části obnovovat přímo.</p>
-<p>Pokud je ale systémový disk poškozený nebo systém vůbec nenabootuje, je lepší postupovat z Live Linuxu nebo jiného záchranného systému.</p>
-<p>Důvod je jednoduchý:</p>
-<p>Neměli bychom se pokoušet přepisovat právě běžící /.</p>
-<ol>
-<li>Záchranný systém</li>
-</ol>
-<p>Po spuštění Live systému nejprve zjistíme disky:</p>
-<p>lsblk -f</p>
-<p>a filesystémy:</p>
-<p>blkid</p>
-<p>Následně připojíme:</p>
-<p>systémový disk,
-disk obsahující Borg repository,
-případné další potřebné filesystémy.</p>
-<p>Je velmi důležité ověřit, že jsme připojili správné zařízení.</p>
-<p>Před jakýmkoli mazáním nebo obnovou systému je vhodné několikrát ověřit:</p>
-<p>lsblk -f
-findmnt
-df -hT
-11. Připojení cílového systému</p>
-<p>Předpokládejme například, že nový nebo opravený systémový filesystem připojíme do:</p>
-<p>/mnt/target</p>
-<p>Pak by jeho strom měl vypadat přibližně:</p>
-<p>/mnt/target/etc
-/mnt/target/home
-/mnt/target/usr
-/mnt/target/var
-/mnt/target/boot
-...</p>
-<p>Borg ale musí obnovovat data do tohoto stromu.</p>
-<p>Proto použijeme:</p>
-<p>cd /mnt/target</p>
-<p>a následně:</p>
-<p>borg extract ...
-12. Obnova systémového archive</p>
-<p>Po připojení repozitáře a cílového filesystemu vybereme konkrétní archive.</p>
-<p>Například:</p>
-<p>system-2026-08-30T14:10:30</p>
-<p>Potom:</p>
-<p>cd /mnt/target</p>
-<p>sudo env BORG_PASSCOMMAND='cat /root/.config/borg/passphrase' \
-    borg extract \
-    /mnt/data/0_backup_0/0_backup_LINUX_0::system-2026-08-30T14:10:30</p>
-<p>Borg začne obnovovat celý strom archive do:</p>
-<p>/mnt/target/</p>
-<p>To znamená například:</p>
-<p>/mnt/target/etc
-/mnt/target/home
-/mnt/target/usr
-/mnt/target/var
-/mnt/target/opt
-...
-13. Co bylo ze systémové zálohy vyloučeno</p>
-<p>Naše systémová záloha nezahrnuje některé dynamické nebo externě připojené oblasti:</p>
-<p>/proc
-/sys
-/dev
-/run
-/tmp
-/mnt
-/media
-/lost+found</p>
-<p>To je záměrné.</p>
-<p>Tyto adresáře není vhodné obnovovat jako běžná statická data.</p>
-<p>Po bootu Linux tyto oblasti znovu vytvoří nebo připojí podle aktuální konfigurace.</p>
-<ol>
-<li>Po obnově systému</li>
-</ol>
-<p>Po obnovení dat je potřeba zkontrolovat zejména:</p>
-<p>/etc/fstab
-/etc/systemd/
-/etc/network/
-/etc/ssh/
-/etc/nut/
-/home/</p>
-<p>a další konfiguraci, která je pro konkrétní počítač důležitá.</p>
-<p>Následně je potřeba ověřit bootloader a případně jej znovu nainstalovat.</p>
-<p>U systému s UEFI je nutné také správně připojit EFI System Partition a obnovit případné bootovací soubory.</p>
-<p>Přesný postup závisí na rozložení disků a způsobu instalace systému.</p>
-<ol>
-<li>Obnova není jen borg extract</li>
-</ol>
-<p>Kompletní disaster recovery proto vypadá přibližně takto:</p>
-<p>Havárie
-   │
-   ▼
-Live / Rescue Linux
-   │
-   ├── zjistit disky
-   ├── připojit cílový systém
-   ├── připojit Borg repository
-   ├── zpřístupnit Borg key
-   ├── zadat passphrase
-   │
-   ▼
-vybrat archive
-   │
-   ▼
-borg extract
-   │
-   ▼
-zkontrolovat filesystem
-   │
-   ▼
-zkontrolovat bootloader
-   │
-   ▼
+<pre><code class="language-bash">cd /tmp/borg-restore-test
+borg extract ...
+</code></pre>
+<p>Výsledkem bude:</p>
+<pre><code class="language-text">/tmp/borg-restore-test/home/user/example.txt
+</code></pre>
+<hr />
+<h1>14. Kontrola obnoveného souboru</h1>
+<p>Po obnově můžeme porovnat checksum:</p>
+<pre><code class="language-bash">sha256sum /home/user/example.txt
+sha256sum /tmp/borg-restore-test/home/user/example.txt
+</code></pre>
+<p>Pokud jsou hodnoty stejné, obsah souboru je identický.</p>
+<p>Automatická kontrola:</p>
+<pre><code class="language-bash">cmp -s \
+    /home/user/example.txt \
+    /tmp/borg-restore-test/home/user/example.txt \
+    &amp;&amp; echo &quot;OK - soubor je identický&quot; \
+    || echo &quot;CHYBA - soubor se liší&quot;
+</code></pre>
+<hr />
+<h1>15. Pozor na vlastnictví obnovených souborů</h1>
+<p>Pokud spouštíme:</p>
+<pre><code class="language-bash">sudo borg extract ...
+</code></pre>
+<p>mohou být obnovené soubory vlastněny rootem.</p>
+<p>To je v testovacím adresáři často nežádoucí.</p>
+<p>Pokud obnovujeme data pouze pro kontrolu, můžeme po obnově změnit vlastníka:</p>
+<pre><code class="language-bash">sudo chown -R &quot;$USER:$USER&quot; /tmp/borg-restore-test
+</code></pre>
+<p>Potom uživatel může obnovené soubory normálně číst.</p>
+<p>U skutečné obnovy systému je ale situace jiná — tam je zachování správných vlastníků, skupin a permissions žádoucí a není vhodné mechanicky měnit vlastníka všech obnovených souborů.</p>
+<hr />
+<h1>16. Obnova celého systému po havárii</h1>
+<p>Kompletní obnova je výrazně důležitější než obnova jednoho souboru.</p>
+<p>Představme si situaci:</p>
+<pre><code class="language-text">Původní systémový disk
+        ↓
+      selhal
+        ↓
+Nový disk
+        ↓
+Live Linux / instalační prostředí
+        ↓
+Připojení zálohovacího zařízení
+        ↓
+Obnova systému z Borg repository
+</code></pre>
+<p>Princip je následující.</p>
+<hr />
+<h2>16.1 Spustit Live systém</h2>
+<p>Po havárii je možné spustit například instalační nebo live prostředí Linuxu.</p>
+<p>Je nutné mít k dispozici:</p>
+<ul>
+<li>nový nebo opravený systémový disk,</li>
+<li>zálohovací disk,</li>
+<li>BorgBackup,</li>
+<li>Borg repository,</li>
+<li>Borg key,</li>
+<li>passphrase.</li>
+</ul>
+<hr />
+<h1>17. Připojení disků</h1>
+<p>Nejdříve zjistíme dostupné disky:</p>
+<pre><code class="language-bash">lsblk -f
+</code></pre>
+<p>Poté vytvoříme mount pointy:</p>
+<pre><code class="language-bash">sudo mkdir -p /mnt/newroot
+sudo mkdir -p /mnt/backup
+</code></pre>
+<p>Připojíme nový systémový filesystem:</p>
+<pre><code class="language-bash">sudo mount /dev/NEW_ROOT_DEVICE /mnt/newroot
+</code></pre>
+<p>A zálohovací filesystem:</p>
+<pre><code class="language-bash">sudo mount /dev/BACKUP_DEVICE /mnt/backup
+</code></pre>
+<p>Konkrétní zařízení se samozřejmě liší podle systému.</p>
+<p><strong>Nikdy nekopírujte slepě <code>/dev/sdX</code> z návodu.</strong></p>
+<p>Vždy nejdříve ověřte výstup:</p>
+<pre><code class="language-bash">lsblk -f
+</code></pre>
+<hr />
+<h1>18. Obnova systému</h1>
+<p>Pokud je cílový filesystem připojený například jako:</p>
+<pre><code class="language-text">/mnt/newroot
+</code></pre>
+<p>přejdeme do něj:</p>
+<pre><code class="language-bash">cd /mnt/newroot
+</code></pre>
+<p>Poté lze použít:</p>
+<pre><code class="language-bash">sudo borg extract \
+    /mnt/backup/borg/linux::system-ARCHIVE
+</code></pre>
+<p>Borg obnoví strukturu systému relativně k aktuálnímu pracovnímu adresáři.</p>
+<p>Proto je příprava cílového adresáře zásadní.</p>
+<hr />
+<h1>19. Obnova bootloaderu</h1>
+<p>Samotné obnovení souborů ještě nemusí znamenat, že systém bude bootovat.</p>
+<p>Po obnově je potřeba podle použitého systému zkontrolovat zejména:</p>
+<ul>
+<li><code>/boot</code>,</li>
+<li>EFI System Partition,</li>
+<li><code>/etc/fstab</code>,</li>
+<li>UUID filesystemů,</li>
+<li>initramfs,</li>
+<li>bootloader,</li>
+<li>konfiguraci kernelu.</li>
+</ul>
+<p>U systému používajícího GRUB může být nutné bootloader znovu nainstalovat.</p>
+<p>Například po vstupu do obnoveného systému přes <code>chroot</code>:</p>
+<pre><code class="language-bash">mount --bind /dev /mnt/newroot/dev
+mount --bind /proc /mnt/newroot/proc
+mount --bind /sys /mnt/newroot/sys
+mount --bind /run /mnt/newroot/run
+</code></pre>
+<p>Poté:</p>
+<pre><code class="language-bash">sudo chroot /mnt/newroot
+</code></pre>
+<p>A následné kroky už závisí na distribuci, způsobu bootování a konfiguraci systému.</p>
+<hr />
+<h1>20. Kontrola <code>/etc/fstab</code></h1>
+<p>Po obnově systému je důležité zkontrolovat:</p>
+<pre><code class="language-bash">cat /etc/fstab
+</code></pre>
+<p>a:</p>
+<pre><code class="language-bash">lsblk -f
+</code></pre>
+<p>UUID filesystemů musí odpovídat skutečným diskům.</p>
+<p>Pokud byl vyměněn disk nebo změněno rozložení partitions, může být nutné <code>fstab</code> upravit.</p>
+<hr />
+<h1>21. Initramfs</h1>
+<p>Po obnově systému může být vhodné znovu vytvořit initramfs:</p>
+<pre><code class="language-bash">update-initramfs -c -k all
+</code></pre>
+<p>Příkaz je závislý na konkrétní distribuci.</p>
+<hr />
+<h1>22. Obnova není totéž co klonování disku</h1>
+<p>Borg není náhrada za bitovou kopii disku.</p>
+<p>Neobnovuje například:</p>
+<pre><code class="language-text">MBR
+partition table
+GPT metadata
+boot sektor
+</code></pre>
+<p>jako klasický diskový image.</p>
+<p>Borg je především <strong>souborový zálohovací systém</strong>.</p>
+<p>Výhodou je ale možnost obnovovat:</p>
+<ul>
+<li>jednotlivé soubory,</li>
+<li>adresáře,</li>
+<li>konfiguraci,</li>
+<li>uživatelská data,</li>
+<li>celý filesystem.</li>
+</ul>
+<hr />
+<h1>23. Co když původní systém stále funguje?</h1>
+<p>Při obnově po havárii je nejlepší nejprve vytvořit nový filesystem a obnovovat do něj.</p>
+<p>Není dobré bez rozmyslu extrahovat celý archiv přímo přes běžící systém.</p>
+<p>Bezpečnější model je:</p>
+<pre><code class="language-text">nový filesystem
+       ↓
+mount
+       ↓
+Borg extract
+       ↓
+kontrola
+       ↓
+bootloader
+       ↓
 restart
-   │
-   ▼
-kontrola systemd služeb
-16. Kontrola po restartu</p>
-<p>Po úspěšné obnově systému je potřeba ověřit, že Linux normálně naběhl.</p>
-<p>Základ:</p>
-<p>systemctl --failed</p>
-<p>Ideální výsledek je:</p>
-<p>0 loaded units listed.</p>
+       ↓
+test systému
+</code></pre>
+<hr />
+<h1>24. Kontrola po obnově</h1>
+<p>Po prvním bootu je vhodné zkontrolovat:</p>
+<pre><code class="language-bash">systemctl --failed
+</code></pre>
 <p>Dále:</p>
-<p>systemctl status</p>
-<p>a pro důležité služby například:</p>
-<p>systemctl status borg-linux-backup.timer --no-pager
-systemctl status borg-linux-backup.service --no-pager
-systemctl status movie-converter.service --no-pager</p>
-<p>Případně:</p>
-<p>systemctl list-timers --all --no-pager
-17. Kontrola Borgu po obnově</p>
-<p>Nejdříve:</p>
-<p>borg info /mnt/data/0_backup_0/0_backup_LINUX_0</p>
-<p>Potom můžeme provést kontrolu repozitáře:</p>
-<p>borg check /mnt/data/0_backup_0/0_backup_LINUX_0</p>
-<p>U rozsáhlejšího repozitáře může kontrola nějakou dobu trvat.</p>
-<p>Je také vhodné zkontrolovat, že existují očekávané archivy:</p>
-<p>borg list /mnt/data/0_backup_0/0_backup_LINUX_0
-18. Test obnovy je stejně důležitý jako samotná záloha</p>
-<p>Jednou z nejlepších kontrol je obnovit náhodně vybraný soubor do /tmp:</p>
-<p>rm -rf /tmp/borg-restore-test
-mkdir -p /tmp/borg-restore-test</p>
-<p>cd /tmp/borg-restore-test</p>
-<p>sudo env BORG_PASSCOMMAND='cat /root/.config/borg/passphrase' \
-    borg extract \
-    /mnt/data/0_backup_0/0_backup_LINUX_0::system-2026-08-30T14:10:30 \
-    home/liko/bin/README.md</p>
-<p>A potom ověřit:</p>
-<p>sha256sum /home/liko/bin/README.md
-sha256sum /tmp/borg-restore-test/home/liko/bin/README.md</p>
-<p>Stejný hash znamená, že obnovený obsah je identický s originálem.</p>
-<ol>
-<li>Co dělat při úplné ztrátě počítače</li>
-</ol>
-<p>Pokud dojde k úplné fyzické havárii počítače, potřebujeme:</p>
-<p>nový disk
-   +
-Live Linux
-   +
-Borg repository
-   +
+<pre><code class="language-bash">systemctl status
+</code></pre>
+<p>a například:</p>
+<pre><code class="language-bash">journalctl -b -p err
+</code></pre>
+<p>Kontrola disků:</p>
+<pre><code class="language-bash">lsblk -f
+</code></pre>
+<p>Kontrola prostoru:</p>
+<pre><code class="language-bash">df -hT
+</code></pre>
+<p>Kontrola základních služeb:</p>
+<pre><code class="language-bash">systemctl list-units --failed
+</code></pre>
+<p>Pokud žádná služba neselhala:</p>
+<pre><code class="language-text">0 loaded units listed.
+</code></pre>
+<p>je to dobrý signál, ale stále je nutné ověřit aplikace a data.</p>
+<hr />
+<h1>25. Jak vypadá rozumná zálohovací architektura</h1>
+<p>Jednoduchý návrh:</p>
+<pre><code class="language-text">                  LINUX SYSTEM
+                       │
+                       │ borg create
+                       ▼
+              ┌──────────────────┐
+              │   Borg Repository │
+              │                  │
+              │ encrypted        │
+              │ deduplicated     │
+              │ compressed       │
+              └────────┬─────────┘
+                       │
+                borg prune
+                       │
+                       ▼
+                Retention policy
+                       │
+                       ▼
+                   borg compact
+</code></pre>
+<p>Automatizace:</p>
+<pre><code class="language-text">systemd timer
+      │
+      ▼
+backup service
+      │
+      ▼
+backup script
+      │
+      ├── borg create
+      ├── borg prune
+      └── borg compact
+</code></pre>
+<hr />
+<h1>26. Co je potřeba chránit stejně jako samotná data</h1>
+<p>Největší chyba zálohovacího systému může být:</p>
+<blockquote>
+<p>Mám perfektní zálohu, ale nemám způsob, jak ji odemknout.</p>
+</blockquote>
+<p>Proto musí být chráněny minimálně:</p>
+<pre><code class="language-text">Borg repository
+        +
 Borg key
-   +
-passphrase</p>
-<p>Nejprve nainstalujeme nebo připravíme základní Linuxové prostředí, připravíme filesystémy a následně obnovíme systém z Borg archive.</p>
-<p>Důležité je neobnovovat slepě na špatně identifikovaný disk.</p>
-<p>Před destruktivními operacemi vždy ověřujeme:</p>
-<p>lsblk -f
-findmnt
-20. Nejdůležitější pravidlo</p>
-<p>Borg záloha není pouze soubor někde na disku.</p>
-<p>Je to kombinace:</p>
-<p>REPOSITORY
-+
-KEY
-+
-PASSPHRASE
-+
-POSTUP OBNOVY</p>
-<p>Pokud některá část chybí, může být obnova výrazně komplikovanější nebo nemožná.</p>
-<p>Proto by měl být Borg key exportovaný a uložený na bezpečném místě.</p>
-<p>Stejně tak musí být bezpečně uložená passphrase.</p>
-<ol>
-<li>Praktický krizový tahák
-Chci obnovit jeden soubor
-mkdir -p /tmp/borg-restore-test
-cd /tmp/borg-restore-test</li>
-</ol>
-<p>sudo env BORG_PASSCOMMAND='cat /root/.config/borg/passphrase' \
-    borg extract \
-    /mnt/data/0_backup_0/0_backup_LINUX_0::ARCHIVE \
-    CESTA/K/SOUBORU
-Chci zobrazit snapshoty
-sudo env BORG_PASSCOMMAND='cat /root/.config/borg/passphrase' \
-    borg list /mnt/data/0_backup_0/0_backup_LINUX_0
-Chci obnovit dokumenty
-mkdir -p /tmp/borg-documents-restore
-cd /tmp/borg-documents-restore</p>
-<p>sudo env BORG_PASSCOMMAND='cat /root/.config/borg/passphrase' \
-    borg extract \
-    /root/.backup_DOCUMENTS_0::ARCHIVE
-Chci obnovit celý systém
-1. Spustit Live/Rescue Linux
-2. Identifikovat disky
-3. Připojit cílový systém do /mnt/target
-4. Zpřístupnit Borg repository
-5. Zpřístupnit Borg key
-6. Zajistit passphrase
-7. cd /mnt/target
-8. borg extract vybraný system archive
-9. zkontrolovat bootloader a filesystem
-10. restartovat
-11. zkontrolovat systemd
-12. zkontrolovat Borg
-13. provést testovací obnovu souboru
-22. Závěr</p>
-<p>Smyslem zálohovacího systému není mít krásný výpis:</p>
-<p>Backup completed successfully.</p>
-<p>Smyslem je být schopen po havárii říct:</p>
-<p>„Mám poslední použitelný snapshot, mám Borg key, znám passphrase a vím přesně, jak ho obnovit.“</p>
-<p>Právě proto je dobré obnovu pravidelně testovat.</p>
-<p>V našem případě máme oddělený Borg repozitář pro systém a dokumenty, automatické vytváření systémových snapshotů pomocí systemd timeru, automatickou retenci a kompakci repozitářů a ověřený postup pro obnovu jednotlivých souborů.</p>
-<p>Dalším krokem je otestovat celý řetězec po restartu systému a ověřit, že nejen Borg, ale také všechny důležité služby ZXLK po rebootu normálně naběhnou.</p>
+        +
+Borg passphrase
+        +
+informace potřebné k obnově
+</code></pre>
+<p>Doporučení:</p>
+<ul>
+<li>repository držet na jiném zařízení než systém,</li>
+<li>Borg key uložit na bezpečné oddělené místo,</li>
+<li>passphrase neukládat pouze na zálohovaný systém,</li>
+<li>dokumentovat postup obnovy,</li>
+<li>pravidelně testovat obnovu.</li>
+</ul>
+<hr />
+<h1>27. Co nikdy nedávat do veřejného repozitáře</h1>
+<p>Do GitHub repository ani Wiki nepatří:</p>
+<pre><code class="language-text">Borg passphrase
+Borg key
+Repository ID, pokud není důvod jej zveřejňovat
+interní IP adresy
+hostname
+osobní adresáře
+osobní data
+přístupové údaje
+API tokeny
+SSH private keys
+</code></pre>
+<p>Veřejný návod má používat pouze obecné příklady:</p>
+<pre><code class="language-text">/backup/borg/linux
+user
+example.txt
+SERVER
+BACKUP_DEVICE
+</code></pre>
+<p>Nikoli skutečné údaje produkčního systému.</p>
+<hr />
+<h1>28. Doporučený minimální checklist</h1>
+<h2>Před zálohováním</h2>
+<pre><code class="language-bash">borg info /backup/borg/linux
+</code></pre>
+<h2>Vytvoření zálohy</h2>
+<pre><code class="language-bash">borg create \
+    --stats \
+    /backup/borg/linux::system-{now} \
+    /
+</code></pre>
+<h2>Kontrola archivů</h2>
+<pre><code class="language-bash">borg list /backup/borg/linux
+</code></pre>
+<h2>Retence</h2>
+<pre><code class="language-bash">borg prune \
+    --dry-run \
+    --list \
+    --keep-daily 30 \
+    --keep-monthly 12 \
+    /backup/borg/linux
+</code></pre>
+<h2>Údržba</h2>
+<pre><code class="language-bash">borg compact /backup/borg/linux
+</code></pre>
+<h2>Kontrola integrity</h2>
+<pre><code class="language-bash">borg check /backup/borg/linux
+</code></pre>
+<h2>Kontrola automatizace</h2>
+<pre><code class="language-bash">systemctl status borg-linux-backup.timer
+</code></pre>
+<h2>Kontrola posledního běhu</h2>
+<pre><code class="language-bash">journalctl -u borg-linux-backup.service -n 50 --no-pager
+</code></pre>
+<h2>Test obnovy</h2>
+<pre><code class="language-bash">mkdir -p /tmp/borg-restore-test
+cd /tmp/borg-restore-test
+
+borg extract \
+    /backup/borg/linux::system-ARCHIVE \
+    path/to/example.txt
+</code></pre>
+<hr />
+<h1>29. Závěr</h1>
+<p>BorgBackup je velmi praktický způsob, jak vytvořit dlouhodobě použitelný zálohovací systém pro Linux.</p>
+<p>Jeho hlavní výhody jsou:</p>
+<ul>
+<li>deduplikace,</li>
+<li>komprese,</li>
+<li>šifrování,</li>
+<li>práce s jednotlivými archivy,</li>
+<li>flexibilní retence,</li>
+<li>kontrola integrity,</li>
+<li>snadná obnova jednotlivých souborů,</li>
+<li>možnost obnovy celého filesystemu,</li>
+<li>automatizace přes systemd.</li>
+</ul>
+<p>Nejdůležitější princip ale není žádný konkrétní příkaz.</p>
+<p>Je to tento:</p>
+<blockquote>
+<p><strong>Záloha není hotová ve chvíli, kdy byla vytvořena. Záloha je hotová ve chvíli, kdy jsme schopni data úspěšně obnovit.</strong></p>
+</blockquote>
+<p>Proto má smysl nejen pravidelně spouštět:</p>
+<pre><code class="language-text">borg create
+</code></pre>
+<p>ale také pravidelně kontrolovat:</p>
+<pre><code class="language-text">borg check
+</code></pre>
+<p>a především prakticky testovat:</p>
+<pre><code class="language-text">borg extract
+</code></pre>
+<p>Pokud je repository šifrované, je stejně důležité bezpečně uchovat Borg key a passphrase.</p>
+<p>Dobře navržený zálohovací systém tak není pouze automatické kopírování dat.</p>
+<p>Je to celý proces:</p>
+<pre><code class="language-text">CREATE
+  ↓
+VERIFY
+  ↓
+RETAIN
+  ↓
+COMPACT
+  ↓
+TEST RESTORE
+  ↓
+DISASTER RECOVERY
+</code></pre>
+<p>A právě schopnost projít posledními dvěma kroky rozhoduje o tom, zda máme skutečnou zálohu, nebo pouze falešný pocit bezpečí.</p>
 
 <p style="margin-top: 2em;"><a href="../index.html">← Zpět na přehled</a></p>
 </body>
