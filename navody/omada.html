@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>omada – wifi systém od tplink</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 2em; line-height: 1.6; }
+    img { max-width: 100%; height: auto; }
+    pre { background: #f4f4f4; padding: 1em; border-radius: 5px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+  </style>
+</head>
+<body>
+<h1>Komplexní příručka: TP-Link Omada Controller v Dockeru (Kubuntu / Linux)</h1>
+<p>Tato příručka pokrývá kompletní proces od čisté instalace Omada Controlleru v prostředí Docker na systému Kubuntu, přes správné provozní postupy a řešení běžných problémů (např. konfliktů s nativní službou), až po pokročilou síťovou diagnostiku prvků z příkazové řádky.</p>
+<hr />
+<h2>1. Instalace Dockeru na Kubuntu</h2>
+<p>Před samotnou instalací Omada Controlleru je nutné mít správně nakonfigurovaný Docker a Docker Compose.</p>
+<pre><code class="language-bash"># Aktualizace indexu balíčků
+sudo apt update
+
+# Instalace potřebných závislostí
+sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
+
+# Přidání oficiálního GPG klíče Dockeru
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+# Přidání repozitáře pro Ubuntu (Kubuntu sdílí repozitáře)
+echo &quot;deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable&quot; | sudo tee /etc/apt/sources.list.d/docker.list &gt; /dev/null
+
+# Instalace Docker engine a Compose
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+# Přidání aktuálního uživatele do skupiny docker (vyžaduje restart/znovu přihlášení)
+sudo usermod -aG docker $USER
+</code></pre>
+<hr />
+<h2>2. Instalace a nasazení Omada Controlleru</h2>
+<p>Pro provoz se doporučuje komunitní image <code>mbentley/omada-controller</code>. Nejstabilnější metodou pro správu je <strong>Docker Compose</strong> s využitím síťového režimu <strong>Host</strong>, který zaručuje bezproblémovou autodetekci (discovery) Omada zařízení v síti.</p>
+<blockquote>
+<p>⚠️ <strong>Důležité varování k verzím:</strong> Nikdy nepoužívejte tag <code>:latest</code>. Omada Controller provádí nevratné změny v databázi. Vždy v konfiguraci uzamkněte konkrétní major/minor verzi (např. <code>6.3</code>), abyste předešli nechtěným aktualizacím, které mohou zlomit kompatibilitu s vaším hardwarem.</p>
+</blockquote>
+<h3>Vytvoření souboru <code>docker-compose.yml</code></h3>
+<p>Vytvořte si adresář (např. <code>~/omada</code>) a uložte do něj následující konfiguraci:</p>
+<pre><code class="language-yaml">services:
+  omada-controller:
+    image: mbentley/omada-controller:6.3
+    container_name: omada-controller
+    network_mode: host
+    restart: unless-stopped
+    stop_grace_period: 60s
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 8192
+    environment:
+      - TZ=Europe/Prague
+      - SHOW_SERVER_LOGS=true
+      - SHOW_MONGODB_LOGS=false
+    volumes:
+      - omada-data:/opt/tplink/EAPController/data
+      - omada-logs:/opt/tplink/EAPController/logs
+
+volumes:
+  omada-data:
+  omada-logs:
+</code></pre>
+<h3>Proč tato konfigurace?</h3>
+<ul>
+<li><strong><code>network_mode: host</code></strong>: Zpřístupní kontejner přímo na síťové kartě počítače. Je klíčový pro L2 discovery (vyhledávání prvků přes UDP všesměrové vysílání).</li>
+<li><strong><code>stop_grace_period: 60s</code></strong>: Poskytuje vestavěné databázi MongoDB dostatek času (60 sekund) na bezpečné uložení dat a korektní vypnutí při restartu počítače, čímž předchází korupci databáze.</li>
+</ul>
+<h3>Spuštění kontejneru</h3>
+<pre><code class="language-bash">docker compose up -d
+</code></pre>
+<p>Po spuštění je rozhraní dostupné na adrese: <strong><code>https://localhost:8043/#/</code></strong> <em>(Inicializace při prvním startu může trvat 1–2 minuty).</em></p>
+<hr />
+<h2>3. Řešení problémů: Konflikt portů po restartu systému</h2>
+<p>Pokud jste v minulosti experimentovali s nativní instalací Omada Controlleru v systému (přes <code>.deb</code> balíček od TP-Linku), po restartu PC se tato služba (<code>tpeap</code>) může spustit dříve než Docker a obsadit síťové porty.</p>
+<h3>Symptomy chybového stavu</h3>
+<ul>
+<li>Stránka <code>https://localhost:8043/#/</code> hlásí chybu spojení.</li>
+<li>Příkaz <code>docker ps</code> ukazuje status <code>Restarting (1) X seconds ago</code>.</li>
+<li>Příkaz <code>docker logs omada-controller</code> končí chybou:
+    <code>ERROR [...] Port 29810, port 29812, port 29813 [...] are already in use.</code></li>
+</ul>
+<h3>Řešení (Krok za krokem)</h3>
+<ol>
+<li><strong>Ukončení zaseknutých procesů natvrdo:</strong>
+    Nativní služba se při pokusu o standardní vypnutí často zasekne v nekonečné smyčce. Vyčistěte systémové procesy:
+    <code>bash
+    sudo killall -9 java mongod</code></li>
+<li><strong>Trvalé zablokování a zamaskování nativní služby:</strong>
+    Aby k situaci nedošlo při dalším startu Kubuntu, službu v <code>systemd</code> nejen vypněte, ale kompletně zamaskujte (přesměruje její spouštěč do <code>/dev/null</code>):
+    <code>bash
+    sudo systemctl stop omada
+    sudo systemctl disable omada
+    sudo systemctl mask omada</code></li>
+<li><strong>Opětovné nahození Docker kontejneru:</strong>
+    Jakmile jsou porty volné, Docker automaticky (nebo manuálně) kontejner stabilizuje:
+    <code>bash
+    docker start omada-controller</code></li>
+</ol>
+<hr />
+<h2>4. Síťová diagnostika Omada z příkazové řádky</h2>
+<p>Při správě sítě a prvků adoptovaných pod Omada Controllerem se často hodí diagnostika přímo z terminálu Kubuntu.</p>
+<h3>Kontrola obsazených portů a naslouchajících služeb</h3>
+<p>Ověření, zda váš počítač skutečně naslouchá na klíčových portech pro komunikaci se switchi a přístupovými body (AP):</p>
+<pre><code class="language-bash">sudo ss -lptn 'sport = :29810 or sport = :29814 or sport = :8043'
+</code></pre>
+<ul>
+<li><strong>8043</strong>: HTTPS Webový port pro správu.</li>
+<li><strong>29810</strong>: UDP port pro vyhledávání (Discovery) prvků starší/přechodové generace V1.</li>
+<li><strong>29814</strong>: TCP port pro management prvků generace V2 (současné firmwary).</li>
+</ul>
+<h3>Vyhledávání Omada zařízení v lokální síti (L2 Discovery)</h3>
+<p>Omada prvky komunikují pomocí UDP broadcastů na portu <code>29810</code>. Zda v síti tato komunikace probíhá a zařízení vysílají pakety, můžete ověřit pomocí síťového analyzátoru <code>tcpdump</code>:</p>
+<pre><code class="language-bash">sudo tcpdump -ni any udp port 29810 -vv -X
+</code></pre>
+<p><em>Tento příkaz vám v reálném čase zobrazí surová data (včetně MAC adres a modelů), která se pokoušejí s controllerem spojit.</em></p>
+<h3>Ruční nasměrování zařízení na Controller (L3 Inform / SSH)</h3>
+<p>Pokud se přístupový bod (EAP) nebo switch nachází v jiné podsíti nebo se nedaří automatické vyhledání, můžete se k danému prvku připojit přes SSH (výchozí přihlašovací údaje jsou <code>admin</code>/<code>admin</code>, případně ty, které máte nastavené v Controlleru pod <em>Site -&gt; Device Account</em>) a vynutit adopci ručně:</p>
+<pre><code class="language-bash"># Přihlášení na IP adresu AP/Switche
+ssh admin@192.168.1.50
+
+# Zobrazení aktuálního stavu informování
+clicmd info
+
+# Manuální nastavení IP adresy vašeho Omada Controlleru
+clicmd set-inform https://&lt;IP_VASEHO_KUBUNTU&gt;:8043/com.tplink.smb.omada.bootstrap.InformUrl
+</code></pre>
+<hr />
+<h2>5. Zálohování a údržba</h2>
+<ul>
+<li><strong>Zálohování přes Web UI (Doporučeno):</strong> Přejděte do <em>Settings &gt; Maintenance &gt; Backup</em> a stáhněte si <code>.cfg</code> soubor. Zálohování kopírováním složek za běhu kontejneru může způsobit nekonzistenci databáze MongoDB.</li>
+<li><strong>Aktualizace Controlleru:</strong> V případě potřeby přechodu na vyšší verzi (např. z 6.3 na 6.4) stačí upravit tag v <code>docker-compose.yml</code>, provést <code>docker compose pull</code> a následně <code>docker compose up -d</code>. Vždy si před tímto krokem udělejte aplikační zálohu!</li>
+</ul>
+
+<p style="margin-top: 2em;"><a href="../index.html">← Zpět na přehled</a></p>
+</body>
+</html>
