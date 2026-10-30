@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>TESmart PKS0802A10 – návod k použití (zapojení a ovládání)</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 2em; line-height: 1.6; }
+    img { max-width: 100%; height: auto; }
+    pre { background: #f4f4f4; padding: 1em; border-radius: 5px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+  </style>
+</head>
+<body>
+<h1>TESmart PKS0802A10 – návod k použití (zapojení a ovládání)</h1>
+<p>Tato stránka popisuje KVM přepínač <strong>TESmart PKS0802A10</strong> s firemním notebookem na Windows, pracovní tower stanicí na Linux, dvěma monitory EIZO, klávesnicí a myší.</p>
+<p>Cílem je rychle zjistit:</p>
+<ul>
+<li>jak jsou zařízení propojena,</li>
+<li>jak přepnout ovládání mezi počítači,</li>
+<li>co dělat, když se obraz nebo periferie nechovají očekávaně.</li>
+</ul>
+<p>Zapojení níže vychází z potvrzeného zapojení tohoto pracoviště.</p>
+<h2>1. Rychlý návod</h2>
+<h3>Přepnutí klávesnice a myši</h3>
+<p>Pokud je jako spouštěcí klávesa nastaven <strong>pravý Ctrl</strong>:</p>
+<ul>
+<li>Stiskni <strong>pravý Ctrl</strong> dvakrát rychle za sebou.</li>
+<li>Stiskni číslo vstupu, na který chceš přepnout: <strong>1–4</strong>.</li>
+</ul>
+<p>Příklad: <code>Pravý Ctrl</code> → <code>Pravý Ctrl</code> → <code>2</code></p>
+<p>Tím se přepne vybraný vstup KVM. Při běžném režimu se oba monitory přepnou na vybraný počítač.</p>
+<p>Pokud zkratka nefunguje, zkus výchozí klávesu <strong>Scroll Lock</strong> (viz <a href="#6-klávesové-zkratky">Klávesové zkratky</a>).</p>
+<h3>Přepnutí při zobrazení dvou různých počítačů</h3>
+<p>Pokud je každý monitor nastaven na jiný počítač, dvojitým stisknutím <strong>pravého Alt</strong> se podle manuálu přepne zaměření klávesnice a myši mezi počítači zobrazenými na monitorech.</p>
+<h3>Když se KVM samo přepíná</h3>
+<p>Automatické skenování vypneš stisknutím <strong>Esc</strong> na připojené klávesnici. Auto Scan je ve výchozím stavu vypnutý.</p>
+<h2>2. Co KVM dělá</h2>
+<p>TESmart PKS0802A10 je přepínač pro <strong>až čtyři počítače a dva monitory DisplayPort</strong>. Připojuje se k němu také USB klávesnice a myš.</p>
+<p>Podporuje dva hlavní režimy:</p>
+<ul>
+<li><strong>Jeden počítač na obou monitorech</strong> – oba monitory zobrazují stejný počítač; nastavení rozšířené nebo duplicitní plochy se provádí v operačním systému.</li>
+<li><strong>Dva počítače současně</strong> – jeden monitor zobrazuje jeden počítač a druhý monitor jiný počítač. Klávesnici a myš lze přepnout mezi zobrazenými počítači.</li>
+</ul>
+<p>KVM má emulaci EDID, která počítači předává informace o připojeném monitoru i při přepnutí. Výrobce doporučuje ponechat EDID zapnuté.</p>
+<h2>3. Zapojení na tomto pracovišti</h2>
+<h3>Zařízení</h3>
+<table>
+<thead>
+<tr>
+<th>Označení</th>
+<th>Zařízení</th>
+<th>Úloha</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Windows</td>
+<td>Firemní notebook s VPN</td>
+<td>Pracovní počítač</td>
+</tr>
+<tr>
+<td>Dock</td>
+<td>i-tec dokovací stanice</td>
+<td>Připojení notebooku k monitorům / KVM a napájení podle konkrétního zapojení</td>
+</tr>
+<tr>
+<td>Linux</td>
+<td>Stolní počítač</td>
+<td>Druhý počítač</td>
+</tr>
+<tr>
+<td>KVM</td>
+<td>TESmart PKS0802A10</td>
+<td>Přepínání obrazových vstupů a USB periferií</td>
+</tr>
+<tr>
+<td>EIZO 1 a 2</td>
+<td>Dva monitory</td>
+<td>Zobrazení pracovní plochy</td>
+</tr>
+<tr>
+<td>Klávesnice a myš</td>
+<td>USB periferie</td>
+<td>Ovládání právě vybraného počítače</td>
+</tr>
+</tbody>
+</table>
+<h3>Schéma skutečného zapojení</h3>
+<pre><code class="language-text">Linux – stolní PC
+Grafická karta NVIDIA Quadro P5000
+        ├── DisplayPort 1 ──┐
+        └── DisplayPort 2 ──┤
+                            ▼
+                     TESmart KVM
+                     vstup [1]
+                            │
+Windows – firemní notebook │
+        │                   │
+        └── USB-C PD ── i-tec dok
+                         Dual Display Docking Station
+                         PD 100 W
+                            ├── DisplayPort 1 ──┐
+                            └── DisplayPort 2 ──┤
+                                                ▼
+                                         TESmart KVM
+                                         vstup [4]
+
+TESmart KVM – obrazové výstupy
+        ├── DisplayPort OUT A ── Monitor EIZO 1
+        └── DisplayPort OUT B ── Monitor EIZO 2
+
+Klávesnice a myš ── USB port KVM označený pro klávesnici/myš
+</code></pre>
+<h3>Přehled připojení</h3>
+<table>
+<thead>
+<tr>
+<th>Počítač</th>
+<th>Cesta obrazu do KVM</th>
+<th style="text-align: right;">Vstup KVM</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stolní PC Linux</td>
+<td>2× DisplayPort z grafické karty NVIDIA Quadro P5000</td>
+<td style="text-align: right;"><strong>1</strong></td>
+</tr>
+<tr>
+<td>Firemní notebook Windows</td>
+<td>USB-C PD → i-tec Dual Display Docking Station, PD 100 W → 2× DisplayPort</td>
+<td style="text-align: right;"><strong>4</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Obraz z KVM vede dvěma kabely DisplayPort přímo do monitorů EIZO. Monitory tedy nejsou v tomto zapojení připojené samostatnými obrazovými kabely přímo k počítačům.</p>
+<blockquote>
+<p><strong>Důležité:</strong> Každý počítač používá v KVM jednu odpovídající skupinu vstupů. Skupina obsahuje dva DisplayPort vstupy (A a B) a USB port. USB propojení daného počítače je potřeba pro přepínání klávesnice a myši; samotné DisplayPort kabely přenášejí obraz.</p>
+</blockquote>
+<h2>4. Porty a tlačítka</h2>
+<h3>Zadní panel</h3>
+<table>
+<thead>
+<tr>
+<th>Označení</th>
+<th>K čemu slouží</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>DC 12V</strong></td>
+<td>Napájecí adaptér KVM</td>
+</tr>
+<tr>
+<td><strong>IR extension</strong></td>
+<td>Připojení prodlužovacího IR přijímače pro dálkový ovladač</td>
+</tr>
+<tr>
+<td><strong>RS232</strong></td>
+<td>Pokročilé ovládání KVM přes sériové příkazy</td>
+</tr>
+<tr>
+<td><strong>DCCI</strong></td>
+<td>Propojení dvou kompatibilních KVM pro sestavu až se čtyřmi monitory; pro běžné zapojení se nepoužívá</td>
+</tr>
+<tr>
+<td><strong>Keyboard and mouse input</strong></td>
+<td>Vyhrazené připojení USB klávesnice a myši</td>
+</tr>
+<tr>
+<td><strong>DisplayPort outputs A/B</strong></td>
+<td>Obrazové výstupy do monitorů</td>
+</tr>
+<tr>
+<td><strong>KVM input groups 1–4</strong></td>
+<td>Vstupy pro počítače; každá skupina má DisplayPort A, DisplayPort B a USB</td>
+</tr>
+</tbody>
+</table>
+<h3>Přední panel</h3>
+<table>
+<thead>
+<tr>
+<th>Prvek</th>
+<th>Funkce</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Tlačítka 1–4</strong></td>
+<td>Výběr počítače v běžném režimu</td>
+</tr>
+<tr>
+<td><strong>MIN / SEC / Set</strong></td>
+<td>Nastavení intervalu automatického skenování</td>
+</tr>
+<tr>
+<td><strong>Status LED</strong></td>
+<td>Indikuje, zda je Auto Scan vypnutý nebo zapnutý</td>
+</tr>
+<tr>
+<td><strong>Digitální displej</strong></td>
+<td>Zobrazuje číslo vstupu a stav EDID pomocí tečky na displeji</td>
+</tr>
+<tr>
+<td><strong>Close</strong></td>
+<td>Krátký stisk vypíná/zapíná obrazové výstupy; podržení přibližně 3 sekundy zapíná/vypíná emulaci EDID</td>
+</tr>
+<tr>
+<td><strong>USB 2.0</strong></td>
+<td>Připojení dalších USB zařízení, například adaptéru nebo periferií</td>
+</tr>
+<tr>
+<td><strong>Power</strong></td>
+<td>Zapnutí/vypnutí napájení KVM</td>
+</tr>
+</tbody>
+</table>
+<h2>5. Režimy zobrazení</h2>
+<h3>Režim A – oba monitory na jednom počítači</h3>
+<p>Stiskni tlačítko vstupu <strong>1–4</strong> na předním panelu nebo použij klávesovou zkratku. Oba monitory se přepnou na vybraný počítač.</p>
+<p>Chceš-li mít rozšířenou plochu, nastav ji v systému Windows nebo Linuxu v nastavení obrazovek.</p>
+<h3>Režim B – každý monitor zobrazuje jiný počítač</h3>
+<p>Na předním panelu nebo dálkovém ovladači:</p>
+<ul>
+<li>Vyber monitor A nebo B.</li>
+<li>Vyber číslo počítače 1–4.</li>
+</ul>
+<p>Příklad: <code>A–4</code> a <code>B–2</code> znamená, že monitor A zobrazuje počítač 4 a monitor B počítač 2.</p>
+<p>Manuál upozorňuje, že vstup A patří k výstupu A a vstup B k výstupu B. Obraz z kanálu A tedy nelze jednoduše přesměrovat na výstup B pomocí KVM.</p>
+<p>V tomto režimu se zaměření klávesnice a myši přepíná dvojitým stisknutím <strong>pravého Alt</strong>.</p>
+<h2>6. Klávesové zkratky</h2>
+<p>Klávesové zkratky fungují pouze tehdy, když je klávesnice připojena do vyhrazeného USB portu KVM pro klávesnici a myš.</p>
+<h3>Spouštěcí klávesa</h3>
+<p>Výchozí spouštěcí klávesa podle výrobce je <strong>Scroll Lock</strong>. Alternativou je <strong>pravý Ctrl</strong>.</p>
+<ul>
+<li>Se spouštěcí klávesou <strong>Scroll Lock</strong> začíná zkratka dvěma rychlými stisky <code>Scroll Lock</code>.</li>
+<li>Se spouštěcí klávesou <strong>pravý Ctrl</strong> začíná zkratka dvěma rychlými stisky pravého Ctrl.</li>
+</ul>
+<p>Po dvojitém stisku KVM krátce pípne; další klávesu stiskni v časovém limitu podle manuálu.</p>
+<table>
+<thead>
+<tr>
+<th>Funkce</th>
+<th>Zkratka při nastaveném Scroll Lock</th>
+<th>Zkratka při nastaveném pravém Ctrl</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Vybrat počítač 1–4 a přepnout oba monitory</td>
+<td><code>Scroll Lock</code> → <code>Scroll Lock</code> → <code>1–4</code></td>
+<td><code>Pravý Ctrl</code> → <code>Pravý Ctrl</code> → <code>1–4</code></td>
+</tr>
+<tr>
+<td>Předchozí vstup</td>
+<td><code>Scroll Lock</code> → <code>Scroll Lock</code> → <code>Page Up</code></td>
+<td>Ověřit podle nastavení</td>
+</tr>
+<tr>
+<td>Další vstup</td>
+<td><code>Scroll Lock</code> → <code>Scroll Lock</code> → <code>Page Down</code></td>
+<td>Ověřit podle nastavení</td>
+</tr>
+<tr>
+<td>Zapnout Auto Scan</td>
+<td><code>Scroll Lock</code> → <code>Scroll Lock</code> → <code>Mezerník</code></td>
+<td>Ověřit podle nastavení</td>
+</tr>
+<tr>
+<td>Zapnout/vypnout přepínání kolečkem myši</td>
+<td><code>Scroll Lock</code> → <code>Scroll Lock</code> → <code>F6</code></td>
+<td>Ověřit podle nastavení</td>
+</tr>
+<tr>
+<td>Zapnout/vypnout zvukové pípnutí</td>
+<td><code>Scroll Lock</code> → <code>Scroll Lock</code> → <code>F11</code></td>
+<td>Ověřit podle nastavení</td>
+</tr>
+<tr>
+<td>Přepnout zaměření klávesnice/myši v režimu dvou počítačů</td>
+<td><code>Pravý Alt</code> → <code>Pravý Alt</code></td>
+<td><code>Pravý Alt</code> → <code>Pravý Alt</code></td>
+</tr>
+<tr>
+<td>Ukončit Auto Scan</td>
+<td><code>Esc</code></td>
+<td><code>Esc</code></td>
+</tr>
+</tbody>
+</table>
+<h3>Přepnutí spouštěcí klávesy na pravý Ctrl</h3>
+<p>Manuál uvádí dvě možnosti:</p>
+<p><strong>Metoda 1 – klávesová zkratka</strong></p>
+<p><code>Scroll Lock</code> → <code>Scroll Lock</code> → <code>F1</code></p>
+<p>Tím se spouštěcí klávesa přepne na pravý Ctrl.</p>
+<p><strong>Metoda 2 – tlačítko Set</strong></p>
+<ul>
+<li>Do 10 sekund po zapnutí KVM stiskni a podrž tlačítko <strong>Set</strong> na předním panelu.</li>
+<li>Drž jej, dokud KVM nezapípá.</li>
+<li>Restartuj KVM.</li>
+</ul>
+<p>Pro návrat ze spouštěcí klávesy pravý Ctrl na Scroll Lock manuál uvádí:</p>
+<p><code>Pravý Ctrl</code> → <code>Pravý Ctrl</code> → <code>F1</code></p>
+<h2>7. Automatické skenování (Auto Scan)</h2>
+<p>Auto Scan postupně přepíná vstupy, aby bylo možné sledovat připojené počítače. Ve výchozím stavu je vypnutý.</p>
+<h3>Zapnutí</h3>
+<ul>
+<li><strong>Klávesnicí:</strong> dvojitý stisk nastavené spouštěcí klávesy → <code>Mezerník</code>.</li>
+<li><strong>Dálkovým ovladačem:</strong> stiskni tlačítko Scan (ikona rotujících šipek).</li>
+<li><strong>Předním panelem:</strong> použij ovládání podle popisu tlačítek na zařízení.</li>
+</ul>
+<h3>Vypnutí</h3>
+<ul>
+<li>Stiskni <strong>Esc</strong> na klávesnici.</li>
+<li>Nebo stiskni číslo vstupu <strong>1–4</strong> na předním panelu.</li>
+<li>Nebo znovu stiskni tlačítko Scan na dálkovém ovladači.</li>
+</ul>
+<h3>Nastavení intervalu</h3>
+<p>Výchozí interval je <strong>5 sekund</strong>. Lze jej nastavit tlačítky na předním panelu:</p>
+<ul>
+<li>Tlačítkem <strong>MIN</strong> nastav počet minut (0–59).</li>
+<li>Tlačítkem <strong>SEC</strong> nastav počet sekund (0–59; minimum je 5 sekund).</li>
+<li>Stiskni <strong>Set</strong> pro potvrzení.</li>
+</ul>
+<p>Při zapnutém Auto Scan lze interval podle manuálu upravovat také klávesami <code>+</code> a <code>−</code> po aktivaci sekvence spouštěcí klávesy.</p>
+<h2>8. Emulace EDID</h2>
+<p>EDID pomáhá počítači zachovat informace o monitoru i při přepínání KVM. Díky tomu se mohou otevřená okna a rozložení plochy chovat stabilněji.</p>
+<ul>
+<li>Emulace EDID je podle výrobce ve výchozím stavu zapnutá.</li>
+<li>Stav ukazuje tečka na pravé straně digitálního displeje KVM.</li>
+<li>Podržením tlačítka <strong>Close</strong> přibližně 3 sekundy lze emulaci EDID zapnout nebo vypnout.</li>
+<li>Výrobce doporučuje ponechat EDID zapnuté. Pokud se objeví problém s obrazem, manuál doporučuje zkusit EDID vypnout a ověřit, zda se chování zlepší.</li>
+</ul>
+<p>Pozor: EDID samo o sobě nezaručuje, že se okna za všech okolností nikdy nepřeskládají; výsledek závisí také na grafice, operačním systému a konkrétním zapojení.</p>
+<h2>9. Řešení problémů</h2>
+<h3>Klávesnice nebo myš neovládá správný počítač</h3>
+<ul>
+<li>Přepni KVM na požadovaný vstup 1–4.</li>
+<li>Zkontroluj, zda je USB kabel daného počítače zapojený do stejné skupiny vstupů jako jeho obrazové kabely.</li>
+<li>Zkontroluj, zda je klávesnice/myš zapojena do vyhrazeného portu KVM.</li>
+<li>Pokud jsou na monitorech zobrazené dva různé počítače, zkus dvojitý stisk pravého Alt.</li>
+</ul>
+<h3>Klávesová zkratka nefunguje</h3>
+<ul>
+<li>Ověř, zda je aktivní spouštěcí klávesa Scroll Lock, nebo pravý Ctrl.</li>
+<li>Stiskni ji dvakrát rychle za sebou.</li>
+<li>Použij klávesnici připojenou přímo do portu KVM pro klávesnici/myš.</li>
+<li>Pokud klávesnice nemá samostatnou klávesu Scroll Lock, použij nastavený pravý Ctrl.</li>
+</ul>
+<h3>Obraz se po přepnutí změní nebo zmizí</h3>
+<ul>
+<li>Ověř, že jsou všechny DisplayPort kabely pevně zapojené.</li>
+<li>Zkontroluj, zda je zapnutý správný vstup monitoru.</li>
+<li>Ověř stav emulace EDID; výrobce doporučuje mít ji zapnutou.</li>
+<li>Pokud potíže přetrvávají, zkus EDID dočasně vypnout tlačítkem Close podrženým přibližně 3 sekundy a otestuj výsledek.</li>
+</ul>
+<h3>KVM samo přepíná vstupy</h3>
+<p>Pravděpodobně je aktivní Auto Scan. Stiskni <strong>Esc</strong>, vyber vstup 1–4 nebo vypni skenování tlačítkem Scan na ovladači.</p>
+<h2>10. Technické údaje a odkazy</h2>
+<ul>
+<li><strong>Model:</strong> TESmart PKS0802A10</li>
+<li><strong>Typ:</strong> 4 počítače × 2 monitory (4×2 DisplayPort KVM)</li>
+<li><strong>Video rozhraní:</strong> DisplayPort 1.4</li>
+<li><strong>Maximální podporované rozlišení podle manuálu:</strong> až 8K (7680 × 4320) při 60 Hz; podpora závisí také na počítači, kabelech a monitoru</li>
+<li><strong>Napájení:</strong> 12 V DC</li>
+<li><strong>Sériové ovládání RS232:</strong> 9600 bps, 8 datových bitů, bez parity, 1 stop bit</li>
+</ul>
+<p>RS232 je pokročilá možnost ovládání a pro běžné přepínání není potřeba.</p>
+<p>Při problémech nebo pro další technické podrobnosti lze použít <a href="https://www.tesmart.com/">oficiální web TESmart</a> a původní manuál k modelu PKS0802A10.</p>
+<hr />
+<h2>Poznámky k provozu</h2>
+<ul>
+<li>Automatické skenování (Auto Scan) je popsáno pro úplnost, ale při běžném provozu se nepoužívá.</li>
+<li>Linux je připojen do vstupu <strong>1</strong> a notebook Windows do vstupu <strong>4</strong>.</li>
+<li>Oba monitory EIZO jsou připojené přímo do obrazových výstupů TESmart KVM.</li>
+</ul>
+
+<p style="margin-top: 2em;"><a href="../index.html">← Zpět na přehled</a></p>
+</body>
+</html>

@@ -5,155 +5,180 @@ tags: [network, sítě, wifi]
 last_update: 2026-09-28
 ---
 
-# Komplexní příručka: TP-Link Omada Controller v Dockeru (Kubuntu / Linux)
+# Komplexní příručka: TP-Link Omada Controller v6 (Docker & Tří-VLANová síť)
 
-Tato příručka pokrývá kompletní proces od čisté instalace Omada Controlleru v prostředí Docker na systému Kubuntu, přes správné provozní postupy a řešení běžných problémů (např. konfliktů s nativní službou), až po pokročilou síťovou diagnostiku prvků z příkazové řádky.
+Tato příručka slouží jako kompletní dokumentace pro instalaci, provoz, řešení konfliktů portů a konfiguraci tří oddělených VLAN sítí s kabelovou topologií bez bezdrátového Meshe.
 
 ---
 
-## 1. Instalace Dockeru na Kubuntu
+## 1. Topologie sítě
+*   **Router:** TP-Link Omada ER707-M2 (vstup internetu).
+*   **Switch:** Propojuje router, řídicí PC, tiskárnu a přístupové body.
+*   **Controller:** Běží v Docker kontejneru na Kubuntu (Host network mód).
+*   **Přístupové body (AP):** 3x Omada EAP (1x desktop, 2x stropní), připojené výhradně kabelem (Mesh vypnut).
 
-Před samotnou instalací Omada Controlleru je nutné mít správně nakonfigurovaný Docker a Docker Compose.
+---
+
+## 2. Instalace a správa Docker kontejneru
+
+Pro bezpečný provoz verze 6.x s fixovaným tagem a dostatečným časem pro korektní vypnutí databáze MongoDB použijte tento příkaz pro sestavení:
 
 ```bash
-# Aktualizace indexu balíčků
-sudo apt update
+sudo docker run -d \
+  --name omada-controller \
+  --stop-timeout 60 \
+  --restart unless-stopped \
+  --ulimit nofile=4096:8192 \
+  --net host \
+  -e TZ=Europe/Prague \
+  -v omada-data:/opt/tplink/EAPController/data \
+  -v omada-logs:/opt/tplink/EAPController/logs \
+  mbentley/omada-controller:6.3
+```
 
-# Instalace potřebných závislostí
-sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
+### Řešení konfliktů po restartu (Porty již obsazeny)
+Pokud kontejner cykluje ve stavu `Restarting (1)` kvůli tomu, že porty obsadila stará nativní instalace balíčku (`tpeap`), spusťte v terminálu Kubuntu:
 
-# Přidání oficiálního GPG klíče Dockeru
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+```bash
+# 1. Natvrdo ukončit polomrtvé procesy systému
+sudo killall -9 java mongod
 
-# Přidání repozitáře pro Ubuntu (Kubuntu sdílí repozitáře)
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+# 2. Opravit práva ve svazcích přepsaná rootem zpět pro uživatele omada (ID 508)
+sudo chown -R 508:508 /var/lib/docker/volumes/omada-data/_data
+sudo chown -R 508:508 /var/lib/docker/volumes/omada-logs/_data
 
-# Instalace Docker engine a Compose
-sudo apt update
-sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+# 3. Odstranit případný zámek databáze
+sudo rm -f /var/lib/docker/volumes/omada-data/_data/db/mongod.lock
 
-# Přidání aktuálního uživatele do skupiny docker (vyžaduje restart/znovu přihlášení)
-sudo usermod -aG docker $USER
+# 4. Trvale zamaskovat starou systémovou službu v systemd
+sudo systemctl stop omada
+sudo systemctl disable omada
+sudo systemctl mask omada
+
+# 5. Spustit Docker kontejner
+sudo docker start omada-controller
 ```
 
 ---
 
-## 2. Instalace a nasazení Omada Controlleru
+## 3. Konfigurace VLAN a podsítí (Omada v6.x)
 
-Pro provoz se doporučuje komunitní image `mbentley/omada-controller`. Nejstabilnější metodou pro správu je **Docker Compose** s využitím síťového režimu **Host**, který zaručuje bezproblémovou autodetekci (discovery) Omada zařízení v síti.
+Všechna nastavení se v nové generaci rozhraní provádějí v sekci **Configuration** v levém menu.
 
-> ⚠️ **Důležité varování k verzím:** Nikdy nepoužívejte tag `:latest`. Omada Controller provádí nevratné změny v databázi. Vždy v konfiguraci uzamkněte konkrétní major/minor verzi (např. `6.3`), abyste předešli nechtěným aktualizacím, které mohou zlomit kompatibilitu s vaším hardwarem.
+kompletní přehled síťové topologie
+                      +-----------------------+
 
-### Vytvoření souboru `docker-compose.yml`
+                      |       INTERNET        |
+                      +-----------+-----------+
+                                  |
+                                  v [WAN]
+                      +-----------+-----------+
 
-Vytvořte si adresář (např. `~/omada`) a uložte do něj následující konfiguraci:
+                      |     Omada Router      |
+                      |       ER707-M2        |
+                      +-----------+-----------+
+                                  | [LAN 10.20.x.1]
+                                  v
+                      +-----------+-----------+
 
-```yaml
-services:
-  omada-controller:
-    image: mbentley/omada-controller:6.3
-    container_name: omada-controller
-    network_mode: host
-    restart: unless-stopped
-    stop_grace_period: 60s
-    ulimits:
-      nofile:
-        soft: 4096
-        hard: 8192
-    environment:
-      - TZ=Europe/Prague
-      - SHOW_SERVER_LOGS=true
-      - SHOW_MONGODB_LOGS=false
-    volumes:
-      - omada-data:/opt/tplink/EAPController/data
-      - omada-logs:/opt/tplink/EAPController/logs
+                      |     PoE Switch        |
+                      +---+---+---+---+---+---+
 
-volumes:
-  omada-data:
-  omada-logs:
-```
+                          |   |   |   |   |
+      +-------------------+   |   |   |   +-------------------+
 
-### Proč tato konfigurace?
-*   **`network_mode: host`**: Zpřístupní kontejner přímo na síťové kartě počítače. Je klíčový pro L2 discovery (vyhledávání prvků přes UDP všesměrové vysílání).
-*   **`stop_grace_period: 60s`**: Poskytuje vestavěné databázi MongoDB dostatek času (60 sekund) na bezpečné uložení dat a korektní vypnutí při restartu počítače, čímž předchází korupci databáze.
+      |                       |   |   |                       |
+      v                       v   v   v                       v
++-----+------+              +-----------+               +-----+------+
 
-### Spuštění kontejneru
-```bash
-docker compose up -d
-```
-Po spuštění je rozhraní dostupné na adrese: **`https://localhost:8043/#/`** *(Inicializace při prvním startu může trvat 1–2 minuty).*
+| Správní PC |              |  Tiskárna |               |  Stropní   |
+| (Kubuntu)  |              | 10.20.1.x |               |    AP 2    |
+|            |              +-----------+               |  EAP610    |
+|  [Docker]  |                                          | 10.20.1.102|
+|  Omada v6  |                                          +-----+------+
+| Controller |                                                |
++------------+                                                |
+                                                              |
+      +-------------------------------------------------------+
+      |
+      v
++-----+------+              +-----------+
+
+|  Stropní   |              |  Desktop  |
+|    AP 1    |              |    AP     |
+|  EAP610    |              |  EAP650   |
+| 10.20.1.101|              | 10.20.1.103|
++-----+------+              +-----+-----+
+
+      |                           |
+      +-------------+-------------+
+                    |
+                    v
+    ================================================================
+    DISTRIBUCE SÍTÍ / VLAN SKRZE VŠECHNA AP:
+    ================================================================
+    [VLAN 1]  SSID: rabuwork       -->  Firma (10.20.1.0/24)  [Plný přístup]
+    [VLAN 2]  SSID: rabuhome       -->  Děti/IoT (10.20.2.0/24) [Pouze Internet]
+    [VLAN 3]  SSID: www.umicky.cz  -->  Hosté (10.20.3.0/24)  [Izolováno/Guest]
+    ================================================================
+
+
+### Krok 3.1: Drátové sítě (LAN Rozhraní)
+Přejděte do: **Configuration ➔ Network Config ➔ Network Settings ➔ LAN** a nastavte:
+
+| Název sítě | Účel (Purpose) | IP Adresa / Subnet | VLAN ID | DHCP Stav |
+| :--- | :--- | :--- | :--- | :--- |
+| **Default / LAN** | Interface | `10.20.1.1/24` | `1` | Zapnuto (Firma) |
+| **Deti_IoT** | Interface | `10.20.2.1/24` | `2` | Zapnuto (Domov/IoT) |
+| **Hosti** | Interface | `10.20.3.1/24` | `3` | Zapnuto (Návštěvy) |
+
+### Krok 3.2: Směrování a Bezpečnost (Gateway ACL)
+Omada mezi VLANami nativně provoz povoluje. Pro izolaci přejděte do: **Configuration ➔ Network Config ➔ Security ➔ ACL ➔ Gateway ACL** a vytvořte dvě pravidla typu **LAN -> LAN** s politikou **Deny**:
+
+1.  **Pravidlo `Blokuj_Hosty_do_vnitrni_site`**
+    *   *Source:* `Network -> Hosti (VLAN 3)`
+    *   *Destination:* `IP Group -> Any`
+2.  **Pravidlo `Blokuj_IoT_do_Firmy`**
+    *   *Source:* `Network -> Deti_IoT (VLAN 2)`
+    *   *Destination:* `Network -> Default/LAN (VLAN 1)`
+    *   *Výsledek:* VLAN 1 vidí do VLAN 2 (správa IoT), ale zařízení z VLAN 2 se do firmy nedostanou.
+
+### Krok 3.3: Bezdrátové sítě (WLAN)
+Přejděte do: **Configuration ➔ Network Config ➔ WLAN** a vytvořte/upravte Wi-Fi sítě. Mapování do VLAN se provádí rozbalením spodní nabídky **Advanced Settings**:
+
+| SSID (Název Wi-Fi) | Zabezpečení | Možnost VLAN v Advanced Settings | Speciální příznaky |
+| :--- | :--- | :--- | :--- |
+| **rabuwork** | WPA2-PSK | **Vypnuto** (propadne do VLAN 1) | Plný přístup |
+| *[Tvoje volba pro IoT]* | WPA2-PSK | **Zapnuto** ➔ zadej **`2`** | Přístup pouze Internet |
+| **www.umicky.cz** | WPA2-PSK / Open | **Zapnuto** ➔ zadej **`3`** | Zaškrtnout **Guest Network** |
+
+*Poznámka: Příznak `Guest Network` u hostovské Wi-Fi hardwarově izoluje klienty na přístupových bodech tak, aby se neviděli ani mezi sebou.*
 
 ---
 
-## 3. Řešení problémů: Konflikt portů po restartu systému
+## 4. Správa hardwaru (AP a Switch)
 
-Pokud jste v minulosti experimentovali s nativní instalací Omada Controlleru v systému (přes `.deb` balíček od TP-Linku), po restartu PC se tato služba (`tpeap`) může spustit dříve než Docker a obsadit síťové porty.
+### Statické IP adresy pro Access Pointy
+Pro stabilitu a přehlednost přiřaďte APčkům pevné IP adresy. Přejděte do: **Management ➔ Devices** ➔ klikněte na dané AP ➔ v pravém panelu zvolte **Config ➔ IP Settings**:
+*   **IP Mode:** `Static`
+*   **IP Address:** `10.20.1.101` až `10.20.1.103` (podle zvoleného schématu)
+*   **Maska / Brána / DNS:** `255.255.255.0` / `10.20.1.1` / `10.20.1.1`
 
-### Symptomy chybového stavu
-*   Stránka `https://localhost:8043/#/` hlásí chybu spojení.
-*   Příkaz `docker ps` ukazuje status `Restarting (1) X seconds ago`.
-*   Příkaz `docker logs omada-controller` končí chybou:
-    `ERROR [...] Port 29810, port 29812, port 29813 [...] are already in use.`
-
-### Řešení (Krok za krokem)
-
-1.  **Ukončení zaseknutých procesů natvrdo:**
-    Nativní služba se při pokusu o standardní vypnutí často zasekne v nekonečné smyčce. Vyčistěte systémové procesy:
-    ```bash
-    sudo killall -9 java mongod
-    ```
-2.  **Trvalé zablokování a zamaskování nativní služby:**
-    Aby k situaci nedošlo při dalším startu Kubuntu, službu v `systemd` nejen vypněte, ale kompletně zamaskujte (přesměruje její spouštěč do `/dev/null`):
-    ```bash
-    sudo systemctl stop omada
-    sudo systemctl disable omada
-    sudo systemctl mask omada
-    ```
-3.  **Opětovné nahození Docker kontejneru:**
-    Jakmile jsou porty volné, Docker automaticky (nebo manuálně) kontejner stabilizuje:
-    ```bash
-    docker start omada-controller
-    ```
+### Vypnutí funkce MESH
+Protože jsou všechna AP připojena kabelem, bezdrátový Mesh je nežádoucí. Globálně ho vypnete v:
+**Configuration ➔ Device Config ➔ Mesh** ➔ přepnout na **Disabled**.
 
 ---
 
-## 4. Síťová diagnostika Omada z příkazové řádky
+## 5. Příkazy pro rychlou diagnostiku ze systému Kubuntu
 
-Při správě sítě a prvků adoptovaných pod Omada Controllerem se často hodí diagnostika přímo z terminálu Kubuntu.
-
-### Kontrola obsazených portů a naslouchajících služeb
-Ověření, zda váš počítač skutečně naslouchá na klíčových portech pro komunikaci se switchi a přístupovými body (AP):
 ```bash
-sudo ss -lptn 'sport = :29810 or sport = :29814 or sport = :8043'
-```
-*   **8043**: HTTPS Webový port pro správu.
-*   **29810**: UDP port pro vyhledávání (Discovery) prvků starší/přechodové generace V1.
-*   **29814**: TCP port pro management prvků generace V2 (současné firmwary).
+# Kontrola, zda controller naslouchá na správných portech pro adoptovaná AP
+sudo ss -lptn 'sport = :29814 or sport = :8043'
 
-### Vyhledávání Omada zařízení v lokální síti (L2 Discovery)
-Omada prvky komunikují pomocí UDP broadcastů na portu `29810`. Zda v síti tato komunikace probíhá a zařízení vysílají pakety, můžete ověřit pomocí síťového analyzátoru `tcpdump`:
-```bash
+# Odposlech L2 broadcastů z APček pro ověření síťové průchodnosti (Discovery)
 sudo tcpdump -ni any udp port 29810 -vv -X
+
+# Kontrola stavu Docker kontejneru v reálném čase
+watch -n 2 sudo docker ps
 ```
-*Tento příkaz vám v reálném čase zobrazí surová data (včetně MAC adres a modelů), která se pokoušejí s controllerem spojit.*
-
-### Ruční nasměrování zařízení na Controller (L3 Inform / SSH)
-Pokud se přístupový bod (EAP) nebo switch nachází v jiné podsíti nebo se nedaří automatické vyhledání, můžete se k danému prvku připojit přes SSH (výchozí přihlašovací údaje jsou `admin`/`admin`, případně ty, které máte nastavené v Controlleru pod *Site -> Device Account*) a vynutit adopci ručně:
-
-```bash
-# Přihlášení na IP adresu AP/Switche
-ssh admin@192.168.1.50
-
-# Zobrazení aktuálního stavu informování
-clicmd info
-
-# Manuální nastavení IP adresy vašeho Omada Controlleru
-clicmd set-inform https://<IP_VASEHO_KUBUNTU>:8043/com.tplink.smb.omada.bootstrap.InformUrl
-```
-
----
-
-## 5. Zálohování a údržba
-
-*   **Zálohování přes Web UI (Doporučeno):** Přejděte do *Settings > Maintenance > Backup* a stáhněte si `.cfg` soubor. Zálohování kopírováním složek za běhu kontejneru může způsobit nekonzistenci databáze MongoDB.
-*   **Aktualizace Controlleru:** V případě potřeby přechodu na vyšší verzi (např. z 6.3 na 6.4) stačí upravit tag v `docker-compose.yml`, provést `docker compose pull` a následně `docker compose up -d`. Vždy si před tímto krokem udělejte aplikační zálohu!
