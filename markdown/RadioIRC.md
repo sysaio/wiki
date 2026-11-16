@@ -53,7 +53,7 @@ Systém **nepotřebuje žádný centrální server, SIM karty ani internetové p
 ## 🛒 Hardwarová sestava (4 uzly)
 
 > [!TIP]
-> **🛒 Kde pořídit použitý hardware (RPishop.cz):**
+> **🛒 Kde pořídit hardware (RPishop.cz):**
 > * [Seeed Studio XIAO nRF52840 & Wio-SX1262 Kit pro Meshtastic](https://rpishop.cz/694263/seeed-studio-xiao-nrf52840-wio-sx1262-kit-pro-meshtastic/)
 > * [LILYGO® T-Echo Plus 868 MHz](https://rpishop.cz/687248/lilygo-t-echo-plus-868-mhz/)
 > * [SenseCAP Solar Node P1 pro Meshtastic](https://rpishop.cz/675458/sensecap-solar-node-p1-pro-meshtastic-solarne-napajeny-lora-uzel/)
