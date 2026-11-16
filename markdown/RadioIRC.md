@@ -19,6 +19,13 @@ Systém **nepotřebuje žádný centrální server, SIM karty ani internetové p
 * **Princip IRC místností:** Místo příkazu `/join #kanál` si v zařízeních nadefinuješ až 8 pojmenovaných kanálů (např. `#general`, `#rodina`, `#linux`) s vlastním šifrovacím klíčem. Každý uzel přijímá a dekóduje pouze zprávy z kanálů, které má uložené.
 * **Páteřní mesh síť:** Solární uzel na střeše domu funguje jako soběstačný opakovač (*repeater*), který pokrývá celou obec a přemosťuje signál mezi domácí pracovnou a mobilními jednotkami v terénu.
 
+> [!WARNING]
+> **Omezení rádiové vrstvy (LoRa 868 MHz):**
+> Pamatuj na to, že LoRa na frekvenci 868 MHz má přenosovou rychlost jen kolem **1 kbps** a maximální délku jedné zprávy **cca 220 bajtů** (včetně zákonného limitu vysílacího času *Duty Cycle* 10 % v EU). 
+> 
+> Jakýkoliv IRC / UDP most (bridge) tedy **nesmí** do éteru přeposílat klasickou režii protokolu IRC (hlášky typu `JOIN`, `PART`, `QUIT`, `MODE` nebo úvodní `MOTD` banner), jinak by okamžitě zahltil síť. Do rádia se musí přeposílat čistě jen samotný text zpráv (`PRIVMSG`).
+
+
 ### 🗺️ Topologie sítě
 
 ```text
