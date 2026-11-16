@@ -50,7 +50,11 @@ Systém **nepotřebuje žádný centrální server, SIM karty ani internetové p
 
 ---
 
-## 🛒 Finální hardwarová sestava (4 uzly)
+## 🛒 Hardwarová sestava (4 uzly)
+
+https://rpishop.cz/694263/seeed-studio-xiao-nrf52840-wio-sx1262-kit-pro-meshtastic/
+https://rpishop.cz/687248/lilygo-t-echo-plus-868-mhz/
+https://rpishop.cz/675458/sensecap-solar-node-p1-pro-meshtastic-solarne-napajeny-lora-uzel/
 
 Celá sestava je postavena na moderním, extrémně úsporném čipu **Nordic nRF52840** a citlivém rádiovém transceivery **Semtech SX1262 (868 MHz)**.
 
